@@ -1,0 +1,11 @@
+{
+  "name": "yapping-site",
+  "compatibility_date": "2026-07-01",
+  "assets": {
+    "directory": "./docs"
+  },
+  "routes": [
+    { "pattern": "get-yapping.com", "custom_domain": true },
+    { "pattern": "www.get-yapping.com", "custom_domain": true }
+  ]
+}
