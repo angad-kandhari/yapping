@@ -1,0 +1,30 @@
+import AppKit
+import SwiftUI
+
+/// Retained window host for SwiftUI content in an accessory (menu bar) app.
+/// isReleasedWhenClosed stays false to avoid dealloc-on-close crashes, and
+/// activation is forced so the window keys properly without a Dock icon.
+final class UtilityWindow<Content: View> {
+    private var window: NSWindow?
+    private let title: String
+    private let makeContent: () -> Content
+
+    init(title: String, content: @escaping () -> Content) {
+        self.title = title
+        self.makeContent = content
+    }
+
+    func show() {
+        if window == nil {
+            let hosting = NSHostingController(rootView: makeContent())
+            let w = NSWindow(contentViewController: hosting)
+            w.title = title
+            w.styleMask = [.titled, .closable, .miniaturizable]
+            w.isReleasedWhenClosed = false
+            w.center()
+            window = w
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
+    }
+}

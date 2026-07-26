@@ -3,8 +3,8 @@ import Foundation
 /// Optional local LLM polish via Ollama. Falls back to the raw transcript on
 /// any failure or suspicious output; the user's words are never lost.
 enum Cleanup {
-    static var host = "http://localhost:11434"
-    static var model = "gemma3:4b"
+    static var host: String { ConfigStore.shared.ollamaHost }
+    static var model: String { ConfigStore.shared.ollamaModel }
 
     private static let prompt = """
     You clean up dictated text. You will be given a raw speech transcription. \
@@ -20,11 +20,18 @@ enum Cleanup {
     """
 
     static func polish(_ text: String) async -> String {
+        guard ConfigStore.shared.cleanupEnabled else { return text }
         guard await isUp() else { return text }
+        var systemPrompt = prompt
+        let words = ConfigStore.shared.dictionary
+        if !words.isEmpty {
+            systemPrompt += "\n- Prefer these exact spellings when they appear: "
+                + words.joined(separator: ", ")
+        }
         let body: [String: Any] = [
             "model": model,
             "messages": [
-                ["role": "system", "content": prompt],
+                ["role": "system", "content": systemPrompt],
                 ["role": "user", "content": text],
             ],
             "stream": false,

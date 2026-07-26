@@ -10,7 +10,7 @@ final class Transcriber {
     /// Per-buffer loudness (RMS), feeds the menu bar waveform.
     var onLevel: ((Float) -> Void)?
 
-    private let locale: Locale
+    private var locale: Locale { Locale(identifier: ConfigStore.shared.localeID) }
     private let engine = AVAudioEngine()
     private var analyzer: SpeechAnalyzer?
     private var module: SpeechTranscriber?
@@ -18,10 +18,6 @@ final class Transcriber {
     private var resultsTask: Task<String, Error>?
     private var converter: AVAudioConverter?
     private var analyzerFormat: AVAudioFormat?
-
-    init(locale: Locale = Locale(identifier: "en_US")) {
-        self.locale = locale
-    }
 
     private func makeModule() -> SpeechTranscriber {
         SpeechTranscriber(
@@ -57,6 +53,18 @@ final class Transcriber {
         let (stream, cont) = AsyncStream<AnalyzerInput>.makeStream()
         continuation = cont
         try await analyzer.start(inputSequence: stream)
+
+        // Bias recognition toward the personal dictionary (names, jargon)
+        let words = ConfigStore.shared.dictionary
+        if !words.isEmpty {
+            do {
+                let context = AnalysisContext()
+                context.contextualStrings[.general] = words
+                try await analyzer.setContext(context)
+            } catch {
+                NSLog("contextual strings not applied: \(error)")
+            }
+        }
 
         resultsTask = Task {
             var text = ""

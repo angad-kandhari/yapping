@@ -31,17 +31,30 @@ final class StatusItem {
     private var settled = false
     private var timer: Timer?
 
-    init(onQuit: @escaping () -> Void) {
+    init(
+        onSettings: @escaping () -> Void,
+        onHistory: @escaping () -> Void,
+        onQuit: @escaping () -> Void
+    ) {
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         let menu = NSMenu()
         statusLine.isEnabled = false
         menu.addItem(statusLine)
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit Yapping", action: #selector(MenuTarget.quit), keyEquivalent: "q")
-        let target = MenuTarget(onQuit: onQuit)
-        quit.target = target
+
+        let target = MenuTarget(onSettings: onSettings, onHistory: onHistory, onQuit: onQuit)
         objc_setAssociatedObject(menu, "target", target, .OBJC_ASSOCIATION_RETAIN)
+
+        let history = NSMenuItem(title: "History...", action: #selector(MenuTarget.history), keyEquivalent: "h")
+        history.target = target
+        menu.addItem(history)
+        let settings = NSMenuItem(title: "Settings...", action: #selector(MenuTarget.settings), keyEquivalent: ",")
+        settings.target = target
+        menu.addItem(settings)
+        menu.addItem(.separator())
+        let quit = NSMenuItem(title: "Quit Yapping", action: #selector(MenuTarget.quit), keyEquivalent: "q")
+        quit.target = target
         menu.addItem(quit)
         item.menu = menu
 
@@ -131,7 +144,21 @@ final class StatusItem {
 }
 
 private final class MenuTarget: NSObject {
+    private let onSettings: () -> Void
+    private let onHistory: () -> Void
     private let onQuit: () -> Void
-    init(onQuit: @escaping () -> Void) { self.onQuit = onQuit }
+
+    init(
+        onSettings: @escaping () -> Void,
+        onHistory: @escaping () -> Void,
+        onQuit: @escaping () -> Void
+    ) {
+        self.onSettings = onSettings
+        self.onHistory = onHistory
+        self.onQuit = onQuit
+    }
+
+    @objc func settings() { onSettings() }
+    @objc func history() { onHistory() }
     @objc func quit() { onQuit() }
 }

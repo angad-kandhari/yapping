@@ -1,18 +1,24 @@
 import AppKit
 import AVFoundation
 import ApplicationServices
+import Combine
 import Speech
+import UserNotifications
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let fnMonitor = FnKeyMonitor()
     private let transcriber = Transcriber()
     private var statusItem: StatusItem!
+    private lazy var settingsWindow = UtilityWindow(title: "Yapping Settings") { SettingsView() }
+    private lazy var historyWindow = UtilityWindow(title: "Yapping History") { HistoryView() }
 
     private var busy = false
     private var cancelled = false
     private var pressedAt = Date.distantPast
     private var startTask: Task<Bool, Never>?
     private var maxTimer: Timer?
+    private var targetApp: NSRunningApplication?
+    private var localeWatcher: AnyCancellable?
 
     /// Holds shorter than this are accidental taps; discard them.
     private let minHold: TimeInterval = 0.35
@@ -20,10 +26,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let maxHold: TimeInterval = 300
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        statusItem = StatusItem(onQuit: { [weak self] in
-            self?.fnMonitor.stop()
-            NSApp.terminate(nil)
-        })
+        statusItem = StatusItem(
+            onSettings: { [weak self] in self?.settingsWindow.show() },
+            onHistory: { [weak self] in self?.historyWindow.show() },
+            onQuit: { [weak self] in
+                self?.fnMonitor.stop()
+                NSApp.terminate(nil)
+            }
+        )
+
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
+
+        // Language switches trigger a one-time model download for that locale
+        localeWatcher = ConfigStore.shared.$localeID
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] _ in
+                Task { try? await self?.transcriber.ensureModel() }
+            }
         transcriber.onLevel = { [weak self] level in
             self?.statusItem.pushLevel(level)
         }
@@ -67,6 +87,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         busy = true
         cancelled = false
         pressedAt = Date()
+        // Remember where the text should land, in case focus moves later
+        targetApp = NSWorkspace.shared.frontmostApplication
         statusItem.setState(.recording)
         Sound.play("Pop")
 
@@ -117,20 +139,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     Sound.play("Basso")
                     return
                 }
-                let cleaned = await Cleanup.polish(text)
+                var cleaned = await Cleanup.polish(text)
+                cleaned = ConfigStore.shared.applyTextRules(to: cleaned)
                 guard !self.cancelled else { return }
+
+                // If the user switched apps while transcribing, put the text
+                // where they were when they started talking
+                if let target = self.targetApp,
+                   NSWorkspace.shared.frontmostApplication?.processIdentifier
+                       != target.processIdentifier {
+                    target.activate()
+                    try? await Task.sleep(for: .milliseconds(180))
+                }
                 // Trailing space so consecutive dictations don't run together
                 Paster.paste(cleaned + " ")
+                HistoryStore.shared.add(
+                    raw: text, cleaned: cleaned,
+                    appName: self.targetApp?.localizedName ?? "Unknown")
             } catch {
                 NSLog("dictation error: \(error)")
                 Sound.play("Basso")
+                Self.notify("Dictation failed", body: "\(error.localizedDescription)")
             }
         }
+    }
+
+    static func notify(_ title: String, body: String) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        UNUserNotificationCenter.current().add(
+            UNNotificationRequest(identifier: UUID().uuidString,
+                                  content: content, trigger: nil))
     }
 }
 
 enum Sound {
     static func play(_ name: String) {
+        guard ConfigStore.shared.soundsEnabled else { return }
         NSSound(contentsOfFile: "/System/Library/Sounds/\(name).aiff", byReference: true)?.play()
     }
 }
