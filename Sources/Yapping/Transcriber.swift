@@ -20,9 +20,10 @@ final class Transcriber {
     private var analyzerFormat: AVAudioFormat?
 
     init() {
-        // Pre-warm so the first press does not pay engine setup with the
-        // user's first word
-        engine.prepare()
+        // Pre-warm: touching the input node builds the audio graph now so
+        // the first press does not pay that cost with the user's first
+        // word. (prepare() on a graphless engine throws; this does not.)
+        _ = engine.inputNode
     }
 
     private func makeModule() -> SpeechTranscriber {
@@ -107,7 +108,6 @@ final class Transcriber {
         module = nil
         resultsTask = nil
         converter = nil
-        engine.prepare()  // stay warm for the next press
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
