@@ -45,6 +45,10 @@ private struct GeneralSettings: View {
                 Text("If Ollama is unreachable, the raw transcript is used. Words are never lost.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Section("Output") {
+                Toggle("Copy to clipboard instead of pasting", isOn: $config.copyInsteadOfPaste)
+                Toggle("Trailing space after each dictation", isOn: $config.trailingSpace)
+            }
             Section("Behavior") {
                 Toggle("Sounds", isOn: $config.soundsEnabled)
                 Toggle("Start at login", isOn: $launchAtLogin)

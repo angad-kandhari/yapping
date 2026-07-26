@@ -7,6 +7,14 @@ enum Paster {
     /// Asks clipboard managers not to store the dictated text.
     private static let concealedType = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")
 
+    /// Copy-only mode: put the text on the clipboard and stop. The user
+    /// pastes where and when they want; the clipboard is NOT restored.
+    static func copyOnly(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+    }
+
     static func paste(_ text: String) {
         let pasteboard = NSPasteboard.general
         let previous = pasteboard.string(forType: .string)

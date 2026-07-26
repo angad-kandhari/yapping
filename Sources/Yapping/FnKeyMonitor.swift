@@ -95,7 +95,8 @@ final class FnKeyMonitor {
             }
         case .keyDown:
             if held && !combo {
-                // fn+<key> is a shortcut (fn+arrow = page up, ...), not a hold
+                // Esc explicitly discards; any other fn+<key> is a shortcut
+                // (fn+arrow = page up, ...), not a hold. Both cancel.
                 combo = true
                 onCancel?()
             }

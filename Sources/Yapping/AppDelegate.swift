@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var settingsWindow = UtilityWindow(title: "Yapping Settings") { SettingsView() }
     private lazy var historyWindow = UtilityWindow(title: "Yapping History") { HistoryView() }
     private lazy var onboardingWindow = UtilityWindow(title: "Welcome to yapping") { OnboardingView() }
+    private lazy var updatesWindow = UtilityWindow(title: "Yapping Updates") { UpdatesView() }
 
     private var busy = false
     private var cancelled = false
@@ -35,7 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onSettings: { [weak self] in self?.settingsWindow.show() },
             onHistory: { [weak self] in self?.historyWindow.show() },
             onSetup: { [weak self] in self?.onboardingWindow.show() },
-            onUpdates: { UpdateCheck.run() },
+            onUpdates: { [weak self] in self?.updatesWindow.show() },
             onQuit: { [weak self] in
                 self?.fnMonitor.stop()
                 NSApp.terminate(nil)
@@ -89,6 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             await Cleanup.warmUp()
             NSLog("yapping ready: hold the globe/fn key to talk")
         }
+        UpdateCheck.quietCheck()
     }
 
     private func requestPermissions() {
@@ -110,6 +112,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         busy = true
         cancelled = false
         pressedAt = Date()
+
+        // Mic first, everything else after: every millisecond before the
+        // engine starts is a millisecond of the user's first word at risk
+        startTask = Task {
+            do {
+                try await transcriber.start()
+                return true
+            } catch {
+                NSLog("could not start recording: \(error)")
+                return false
+            }
+        }
+
         // Remember where the text should land, in case focus moves later
         targetApp = NSWorkspace.shared.frontmostApplication
         activeStyle = Style.match(
@@ -128,15 +143,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if ConfigStore.shared.hudEnabled { hud.show() }
         Sound.play("Pop")
 
-        startTask = Task {
-            do {
-                try await transcriber.start()
-                return true
-            } catch {
-                NSLog("could not start recording: \(error)")
-                return false
-            }
-        }
         maxTimer = Timer.scheduledTimer(withTimeInterval: maxHold, repeats: false) { [weak self] _ in
             self?.fnReleased()
         }
@@ -211,7 +217,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // Trailing space so consecutive dictations don't run together
                 // (not for edits, which replace the selection exactly)
                 let isEdit = selection?.isEmpty == false
-                Paster.paste(isEdit ? output : output + " ")
+                let config = ConfigStore.shared
+                let final = (isEdit || !config.trailingSpace) ? output : output + " "
+                if config.copyInsteadOfPaste && !isEdit {
+                    Paster.copyOnly(output)
+                    Self.notify("Copied", body: "Your dictation is on the clipboard.")
+                } else {
+                    Paster.paste(final)
+                }
                 HistoryStore.shared.add(
                     raw: text, cleaned: output,
                     appName: self.targetApp?.localizedName ?? "Unknown")

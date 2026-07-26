@@ -23,6 +23,8 @@ final class ConfigStore: ObservableObject {
     @Published var ollamaModel: String { didSet { d.set(ollamaModel, forKey: "ollamaModel") } }
     @Published var ollamaHost: String { didSet { d.set(ollamaHost, forKey: "ollamaHost") } }
     @Published var soundsEnabled: Bool { didSet { d.set(soundsEnabled, forKey: "soundsEnabled") } }
+    @Published var copyInsteadOfPaste: Bool { didSet { d.set(copyInsteadOfPaste, forKey: "copyInsteadOfPaste") } }
+    @Published var trailingSpace: Bool { didSet { d.set(trailingSpace, forKey: "trailingSpace") } }
     @Published var dictionary: [String] { didSet { saveJSON(dictionary, key: "dictionary") } }
     @Published var replacements: [Replacement] { didSet { saveJSON(replacements, key: "replacements") } }
     @Published var snippets: [Snippet] { didSet { saveJSON(snippets, key: "snippets") } }
@@ -38,6 +40,8 @@ final class ConfigStore: ObservableObject {
         ollamaModel = d.string(forKey: "ollamaModel") ?? "gemma3:4b"
         ollamaHost = d.string(forKey: "ollamaHost") ?? "http://localhost:11434"
         soundsEnabled = d.object(forKey: "soundsEnabled") as? Bool ?? true
+        copyInsteadOfPaste = d.object(forKey: "copyInsteadOfPaste") as? Bool ?? false
+        trailingSpace = d.object(forKey: "trailingSpace") as? Bool ?? true
         dictionary = Self.loadJSON([String].self, key: "dictionary") ?? []
         replacements = Self.loadJSON([Replacement].self, key: "replacements") ?? []
         snippets = Self.loadJSON([Snippet].self, key: "snippets") ?? []

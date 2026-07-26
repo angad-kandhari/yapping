@@ -19,6 +19,12 @@ final class Transcriber {
     private var converter: AVAudioConverter?
     private var analyzerFormat: AVAudioFormat?
 
+    init() {
+        // Pre-warm so the first press does not pay engine setup with the
+        // user's first word
+        engine.prepare()
+    }
+
     private func makeModule() -> SpeechTranscriber {
         SpeechTranscriber(
             locale: locale,
@@ -101,6 +107,7 @@ final class Transcriber {
         module = nil
         resultsTask = nil
         converter = nil
+        engine.prepare()  // stay warm for the next press
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 

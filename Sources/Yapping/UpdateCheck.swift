@@ -1,40 +1,62 @@
 import AppKit
 import Foundation
 
-/// Lightweight update check against GitHub releases. No frameworks, no
-/// background phoning home: it runs only when the user asks.
-enum UpdateCheck {
-    private static let releasesAPI =
-        "https://api.github.com/repos/angad-kandhari/yapping/releases/latest"
-    private static let releasesPage =
-        "https://github.com/angad-kandhari/yapping/releases/latest"
+struct Release: Identifiable {
+    let id: String
+    let version: String
+    let title: String
+    let notes: String
+    let publishedAt: Date?
+    let url: URL?
+}
 
-    static func run() {
-        let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"]
-            as? String ?? "0"
+/// Update lookups against GitHub releases. Runs only when the user opens
+/// the Updates window, plus one quiet check at launch. No other phoning home.
+enum UpdateCheck {
+    static let releasesPage = URL(
+        string: "https://github.com/angad-kandhari/yapping/releases")!
+    private static let releasesAPI =
+        "https://api.github.com/repos/angad-kandhari/yapping/releases?per_page=20"
+
+    static var currentVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+    }
+
+    /// All releases newer than the running version, newest first.
+    /// Empty array means up to date; nil means the check failed.
+    static func newerReleases() async -> [Release]? {
+        guard let url = URL(string: releasesAPI),
+              let (data, response) = try? await URLSession.shared.data(from: url),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+        else { return nil }
+
+        let current = currentVersion
+        let dateParser = ISO8601DateFormatter()
+        return json.compactMap { item -> Release? in
+            guard let tag = item["tag_name"] as? String else { return nil }
+            let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+            guard version.compare(current, options: .numeric) == .orderedDescending
+            else { return nil }
+            return Release(
+                id: tag,
+                version: version,
+                title: item["name"] as? String ?? tag,
+                notes: item["body"] as? String ?? "",
+                publishedAt: (item["published_at"] as? String)
+                    .flatMap { dateParser.date(from: $0) },
+                url: (item["html_url"] as? String).flatMap { URL(string: $0) })
+        }
+    }
+
+    /// Quiet launch check: notify only when something newer exists.
+    static func quietCheck() {
         Task {
-            guard let url = URL(string: releasesAPI),
-                  let (data, response) = try? await URLSession.shared.data(from: url),
-                  (response as? HTTPURLResponse)?.statusCode == 200,
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let tag = json["tag_name"] as? String else {
-                await MainActor.run {
-                    AppDelegate.notify("Update check failed",
-                                       body: "Could not reach GitHub. Try again later.")
-                }
-                return
-            }
-            let latest = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
-            let newer = latest.compare(current, options: .numeric) == .orderedDescending
+            guard let newer = await newerReleases(), let latest = newer.first else { return }
             await MainActor.run {
-                if newer {
-                    AppDelegate.notify("Yapping \(latest) is available",
-                                       body: "You have \(current). Opening the release page.")
-                    NSWorkspace.shared.open(URL(string: releasesPage)!)
-                } else {
-                    AppDelegate.notify("You are up to date",
-                                       body: "Yapping \(current) is the latest release.")
-                }
+                AppDelegate.notify(
+                    "Yapping \(latest.version) is available",
+                    body: "Open Check for Updates in the menu to see what's new.")
             }
         }
     }
