@@ -25,6 +25,7 @@ endif
 
 install: sign
 	pkill -x yapping || true
+	sleep 1
 	rm -rf /Applications/Yapping.app
 	ditto $(APP) /Applications/Yapping.app
 	open -ga /Applications/Yapping.app
