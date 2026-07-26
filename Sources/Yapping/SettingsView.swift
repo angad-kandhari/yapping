@@ -8,10 +8,12 @@ struct SettingsView: View {
                 .tabItem { Label("General", systemImage: "gearshape") }
             DictionarySettings()
                 .tabItem { Label("Dictionary", systemImage: "character.book.closed") }
+            StylesSettings()
+                .tabItem { Label("Styles", systemImage: "paintbrush") }
             AboutSettings()
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
-        .frame(width: 520, height: 420)
+        .frame(width: 540, height: 460)
     }
 }
 
@@ -45,6 +47,12 @@ private struct GeneralSettings: View {
                     .onChange(of: launchAtLogin) { _, newValue in
                         config.setLaunchAtLogin(newValue)
                     }
+                Toggle("Use on-screen context", isOn: $config.useFieldContext)
+                Text("Reads the focused text field so cleanup matches its tone. Processed locally, never leaves this Mac.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Toggle("Live transcript preview", isOn: $config.hudEnabled)
+                Text("Floating panel showing your words as you speak.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -138,6 +146,42 @@ private struct DictionarySettings: View {
             }
             Button("Add snippet") { snippets.wrappedValue.append(Snippet()) }
         }
+    }
+}
+
+private struct StylesSettings: View {
+    @ObservedObject var config = ConfigStore.shared
+
+    var body: some View {
+        Form {
+            Section {
+                Text("The active style is chosen from the frontmost app when you start talking. Every prompt is editable; nothing about the rewriting is hidden.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach($config.styles) { $style in
+                Section(style.name.isEmpty ? "Style" : style.name) {
+                    TextField("Name", text: $style.name)
+                    TextField("Applies when bundle id contains (comma separated)",
+                              text: Binding(
+                                get: { style.appPatterns.joined(separator: ", ") },
+                                set: { style.appPatterns = $0.split(separator: ",")
+                                    .map { $0.trimmingCharacters(in: .whitespaces) } }))
+                    Toggle("Verbatim (skip cleanup entirely)", isOn: $style.verbatim)
+                    if !style.verbatim {
+                        TextEditor(text: $style.prompt)
+                            .font(.system(.body))
+                            .frame(minHeight: 56)
+                    }
+                    Button(role: .destructive) {
+                        config.styles.removeAll { $0.id == style.id }
+                    } label: { Text("Delete style") }
+                }
+            }
+            Button("Add style") {
+                config.styles.append(Style(name: "New style", appPatterns: [], prompt: ""))
+            }
+        }
+        .formStyle(.grouped)
     }
 }
 

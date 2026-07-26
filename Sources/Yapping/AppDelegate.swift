@@ -19,6 +19,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var maxTimer: Timer?
     private var targetApp: NSRunningApplication?
     private var localeWatcher: AnyCancellable?
+    private var activeStyle: Style?
+    private var axSnapshot: Task<(String?, String?), Never>?
+    private let hud = PreviewHUD()
 
     /// Holds shorter than this are accidental taps; discard them.
     private let minHold: TimeInterval = 0.35
@@ -46,6 +49,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         transcriber.onLevel = { [weak self] level in
             self?.statusItem.pushLevel(level)
+        }
+        transcriber.onPartial = { [weak self] finalized, volatile in
+            self?.hud.update(finalized: finalized, volatile: volatile)
         }
 
         requestPermissions()
@@ -89,7 +95,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pressedAt = Date()
         // Remember where the text should land, in case focus moves later
         targetApp = NSWorkspace.shared.frontmostApplication
-        statusItem.setState(.recording)
+        activeStyle = Style.match(
+            ConfigStore.shared.styles, bundleID: targetApp?.bundleIdentifier)
+
+        // AX reads (selection for voice editing, field text for context)
+        // happen off the critical path; a hung app must not delay the mic
+        let wantContext = ConfigStore.shared.useFieldContext
+        axSnapshot = Task.detached(priority: .userInitiated) {
+            let selection = AXContext.selectedText()
+            let context = wantContext ? AXContext.fieldContext() : nil
+            return (selection, context)
+        }
+
+        statusItem.setState(.recording, detail: activeStyle?.name)
+        if ConfigStore.shared.hudEnabled { hud.show() }
         Sound.play("Pop")
 
         startTask = Task {
@@ -115,6 +134,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let wasCancelled = cancelled
+        hud.hide()
         statusItem.setState(wasCancelled ? .idle : .processing)
         if !wasCancelled { Sound.play("Tink") }
 
@@ -139,8 +159,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     Sound.play("Basso")
                     return
                 }
-                var cleaned = await Cleanup.polish(text)
-                cleaned = ConfigStore.shared.applyTextRules(to: cleaned)
+                let (selection, fieldContext) = await self.axSnapshot?.value ?? (nil, nil)
+
+                let output: String
+                if let selection, !selection.isEmpty {
+                    // Voice edit: the spoken words are an instruction applied
+                    // to the selected text; pasting replaces the selection
+                    self.statusItem.setState(.processing, detail: "Editing selection")
+                    guard let edited = await Cleanup.rewrite(
+                        selection: selection, instruction: text) else {
+                        Sound.play("Basso")
+                        Self.notify("Edit failed",
+                                    body: "Selection left unchanged. Is Ollama running?")
+                        return
+                    }
+                    output = edited
+                } else if self.activeStyle?.verbatim == true {
+                    output = ConfigStore.shared.applyTextRules(to: text)
+                } else {
+                    let cleaned = await Cleanup.polish(
+                        text, style: self.activeStyle, fieldContext: fieldContext)
+                    output = ConfigStore.shared.applyTextRules(to: cleaned)
+                }
                 guard !self.cancelled else { return }
 
                 // If the user switched apps while transcribing, put the text
@@ -152,9 +192,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     try? await Task.sleep(for: .milliseconds(180))
                 }
                 // Trailing space so consecutive dictations don't run together
-                Paster.paste(cleaned + " ")
+                // (not for edits, which replace the selection exactly)
+                let isEdit = selection?.isEmpty == false
+                Paster.paste(isEdit ? output : output + " ")
                 HistoryStore.shared.add(
-                    raw: text, cleaned: cleaned,
+                    raw: text, cleaned: output,
                     appName: self.targetApp?.localizedName ?? "Unknown")
             } catch {
                 NSLog("dictation error: \(error)")

@@ -9,6 +9,8 @@ import Speech
 final class Transcriber {
     /// Per-buffer loudness (RMS), feeds the menu bar waveform.
     var onLevel: ((Float) -> Void)?
+    /// Live transcript for the preview HUD: (finalized, volatile tail).
+    var onPartial: ((String, String) -> Void)?
 
     private var locale: Locale { Locale(identifier: ConfigStore.shared.localeID) }
     private let engine = AVAudioEngine()
@@ -23,7 +25,8 @@ final class Transcriber {
         SpeechTranscriber(
             locale: locale,
             transcriptionOptions: [],
-            reportingOptions: [],
+            // Volatile results only cost anything when the HUD wants them
+            reportingOptions: ConfigStore.shared.hudEnabled ? [.volatileResults] : [],
             attributeOptions: []
         )
     }
@@ -66,10 +69,16 @@ final class Transcriber {
             }
         }
 
-        resultsTask = Task {
+        resultsTask = Task { [weak self] in
             var text = ""
-            for try await result in module.results where result.isFinal {
-                text += String(result.text.characters)
+            for try await result in module.results {
+                if result.isFinal {
+                    text += String(result.text.characters)
+                    self?.onPartial?(text, "")
+                } else {
+                    // Volatile text is replaced wholesale as recognition refines
+                    self?.onPartial?(text, String(result.text.characters))
+                }
             }
             return text
         }

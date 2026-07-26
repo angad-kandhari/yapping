@@ -74,7 +74,7 @@ final class StatusItem {
         }
     }
 
-    func setState(_ state: State) {
+    func setState(_ state: State, detail: String? = nil) {
         DispatchQueue.main.async {
             self.state = state
             self.settled = false
@@ -83,9 +83,9 @@ final class StatusItem {
                 self.statusLine.title = "Hold \u{1F310} (fn) to talk"
             case .recording:
                 self.levels = Array(repeating: 0, count: 6)
-                self.statusLine.title = "Listening..."
+                self.statusLine.title = detail.map { "Listening (\($0))..." } ?? "Listening..."
             case .processing:
-                self.statusLine.title = "Transcribing..."
+                self.statusLine.title = detail.map { "\($0)..." } ?? "Transcribing..."
             }
         }
     }
