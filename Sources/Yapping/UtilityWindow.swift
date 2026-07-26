@@ -24,7 +24,6 @@ final class UtilityWindow<Content: View> {
             w.titlebarAppearsTransparent = true
             w.titleVisibility = .hidden
             w.isMovableByWindowBackground = true
-            w.appearance = NSAppearance(named: .darkAqua)
             w.isReleasedWhenClosed = false
             w.center()
             window = w

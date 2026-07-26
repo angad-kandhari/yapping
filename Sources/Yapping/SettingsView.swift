@@ -195,7 +195,7 @@ private struct AboutSettings: View {
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
                 .frame(width: 96, height: 96)
-            BrandLogo(height: 22, color: .white)
+            BrandLogo(height: 22)
             Text("yapping").font(.system(size: 28, weight: .bold))
             Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev")")
                 .foregroundStyle(.secondary)

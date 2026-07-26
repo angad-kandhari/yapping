@@ -1,37 +1,34 @@
 import AppKit
 
 /// The Dock companion. Two states:
-/// - idle: a tiny dim capsule sitting just above the Dock, barely there
+/// - idle: a tiny glass sliver sitting just above the Dock, barely there
 /// - listening: on fn-hold it blooms into a wide, short pill where the
 ///   yapping bars dance with your voice; shrinks back on release
+///
+/// Uses the system Liquid Glass (NSGlassEffectView, macOS 26) so it matches
+/// the OS look in light and dark; falls back to the classic HUD material.
 final class WaveformHUD {
-    // Panel is always active-size; the pill animates inside it
+    // Panel is always active-size; the glass pill animates inside it
     private static let panelSize = NSSize(width: 220, height: 48)
     private static let idleFrame = NSRect(x: (220 - 64) / 2, y: 0, width: 64, height: 9)
     private static let activeFrame = NSRect(x: 10, y: 0, width: 200, height: 42)
 
     private var panel: NSPanel?
-    private var pill: NSVisualEffectView?
-    private var idleBar: NSView?
+    private var glass: NSView?
+    private var idleBar: ThemedCapsule?
     private var waveView: WaveformView?
     private var visible = false
 
     /// Show the idle sliver (call at launch and on release).
     func showIdle() {
         DispatchQueue.main.async {
-            if self.panel == nil { self.makePanel() }
-            if !self.visible {
-                self.position()
-                self.panel?.alphaValue = 1
-                self.panel?.orderFrontRegardless()
-                self.visible = true
-            }
+            self.ensureVisible()
             self.waveView?.stop()
             NSAnimationContext.runAnimationGroup { ctx in
                 ctx.duration = 0.22
                 ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                self.pill?.animator().frame = Self.idleFrame
-                self.pill?.layer?.cornerRadius = Self.idleFrame.height / 2
+                ctx.allowsImplicitAnimation = true
+                self.setPillFrame(Self.idleFrame)
                 self.waveView?.animator().alphaValue = 0
                 self.idleBar?.animator().alphaValue = 1
             }
@@ -41,20 +38,14 @@ final class WaveformHUD {
     /// Bloom into the listening pill (call on fn-press).
     func showActive() {
         DispatchQueue.main.async {
-            if self.panel == nil { self.makePanel() }
-            if !self.visible {
-                self.position()
-                self.panel?.alphaValue = 1
-                self.panel?.orderFrontRegardless()
-                self.visible = true
-            }
+            self.ensureVisible()
             self.waveView?.reset()
             self.waveView?.start()
             NSAnimationContext.runAnimationGroup { ctx in
                 ctx.duration = 0.18
                 ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                self.pill?.animator().frame = Self.activeFrame
-                self.pill?.layer?.cornerRadius = Self.activeFrame.height / 2
+                ctx.allowsImplicitAnimation = true
+                self.setPillFrame(Self.activeFrame)
                 self.waveView?.animator().alphaValue = 1
                 self.idleBar?.animator().alphaValue = 0
             }
@@ -75,6 +66,29 @@ final class WaveformHUD {
         DispatchQueue.main.async { self.waveView?.push(level) }
     }
 
+    private func ensureVisible() {
+        if panel == nil { makePanel() }
+        if !visible {
+            position()
+            panel?.alphaValue = 1
+            panel?.orderFrontRegardless()
+            visible = true
+        }
+    }
+
+    private func setPillFrame(_ frame: NSRect) {
+        glass?.animator().frame = frame
+        setCornerRadius(frame.height / 2)
+    }
+
+    private func setCornerRadius(_ radius: CGFloat) {
+        if let glassEffect = glass as? NSGlassEffectView {
+            glassEffect.cornerRadius = radius
+        } else {
+            glass?.layer?.cornerRadius = radius
+        }
+    }
+
     private func makePanel() {
         let panel = NSPanel(
             contentRect: NSRect(origin: .zero, size: Self.panelSize),
@@ -86,32 +100,51 @@ final class WaveformHUD {
         panel.hasShadow = false
         panel.ignoresMouseEvents = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        // No forced appearance: the glass follows the system theme
 
-        let pill = NSVisualEffectView(frame: Self.idleFrame)
-        pill.material = .hudWindow
-        pill.state = .active
-        pill.wantsLayer = true
-        pill.layer?.cornerRadius = Self.idleFrame.height / 2
-        pill.layer?.masksToBounds = true
+        // Content shared by both states; frames track the pill via autoresize
+        let content = NSView(frame: NSRect(origin: .zero, size: Self.idleFrame.size))
 
-        // Faint capsule so the idle sliver reads against any wallpaper
-        let idleBar = NSView(frame: pill.bounds)
+        let idleBar = ThemedCapsule(frame: content.bounds.insetBy(dx: 1, dy: 1))
         idleBar.autoresizingMask = [.width, .height]
-        idleBar.wantsLayer = true
-        idleBar.layer?.backgroundColor =
-            NSColor.white.withAlphaComponent(0.22).cgColor
-        pill.addSubview(idleBar)
+        content.addSubview(idleBar)
 
-        let wave = WaveformView(frame: NSRect(origin: .zero, size: Self.activeFrame.size))
+        let wave = WaveformView(frame: content.bounds)
         wave.autoresizingMask = [.width, .height]
         wave.alphaValue = 0
-        pill.addSubview(wave)
+        content.addSubview(wave)
 
-        panel.contentView?.addSubview(pill)
-        self.pill = pill
+        let glass: NSView
+        if let liquid = Self.makeGlassView() {
+            liquid.frame = Self.idleFrame
+            liquid.contentView = content
+            content.frame = liquid.bounds
+            glass = liquid
+        } else {
+            let effect = NSVisualEffectView(frame: Self.idleFrame)
+            effect.material = .hudWindow
+            effect.state = .active
+            effect.wantsLayer = true
+            effect.layer?.masksToBounds = true
+            content.frame = effect.bounds
+            effect.addSubview(content)
+            content.autoresizingMask = [.width, .height]
+            glass = effect
+        }
+
+        panel.contentView?.addSubview(glass)
+        self.glass = glass
         self.idleBar = idleBar
         self.waveView = wave
         self.panel = panel
+        setCornerRadius(Self.idleFrame.height / 2)
+    }
+
+    private static func makeGlassView() -> NSGlassEffectView? {
+        // Liquid Glass ships with macOS 26; keep a runtime guard anyway so
+        // a future SDK change degrades to the classic material, not a crash
+        guard NSClassFromString("NSGlassEffectView") != nil else { return nil }
+        return NSGlassEffectView(frame: .zero)
     }
 
     private func position() {
@@ -123,17 +156,26 @@ final class WaveformHUD {
     }
 }
 
+/// The idle sliver's fill; follows the system theme via labelColor.
+private final class ThemedCapsule: NSView {
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor.labelColor.withAlphaComponent(0.3).setFill()
+        NSBezierPath(roundedRect: bounds, xRadius: bounds.height / 2,
+                     yRadius: bounds.height / 2).fill()
+    }
+}
+
 /// The six logo bars, stretched wide and kept short, eased at 30 fps.
+/// Draws centered for whatever size it currently is, so it stays true
+/// through the bloom animation.
 private final class WaveformView: NSView {
-    // Logo geometry (24-grid): wide horizontal spread, compact height
-    private static let scaleX: CGFloat = 7
-    private static let scaleY: CGFloat = 1.5
-    private static let barCenters: [CGFloat] = [3.5, 7, 10.5, 14, 17.5, 21].map { $0 * scaleX }
-    private static let restHeights: [CGFloat] = [4, 9, 15, 7, 11, 3].map { $0 * scaleY }
+    // Logo bar centers on the 24-grid, normalized to start at zero
+    private static let gridCenters: [CGFloat] = [0, 3.5, 7, 10.5, 14, 17.5]
+    private static let gridSpan: CGFloat = 17.5
+    private static let restHeights: [CGFloat] = [4, 9, 15, 7, 11, 3].map { $0 * 1.5 }
     private static let barWidth: CGFloat = 5
-    private static let maxHeight: CGFloat = 32
+    private static let maxHeight: CGFloat = 30
     private static let gain: Float = 80
-    private static let contentWidth: CGFloat = 24.5 * scaleX
 
     private var levels: [Float] = Array(repeating: 0, count: 6)
     private var displayed: [CGFloat] = WaveformView.restHeights
@@ -172,13 +214,20 @@ private final class WaveformView: NSView {
         needsDisplay = true
     }
 
+    override var frame: NSRect {
+        didSet { needsDisplay = true }
+    }
+
     override func draw(_ dirtyRect: NSRect) {
-        let offsetX = (bounds.width - Self.contentWidth) / 2 + Self.barWidth / 2
+        // Spread the bars across ~70% of the current width, dead center
+        let span = bounds.width * 0.7
+        let scaleX = span / Self.gridSpan
+        let left = (bounds.width - span) / 2
         NSColor.labelColor.withAlphaComponent(0.95).setFill()
-        for (i, cx) in Self.barCenters.enumerated() {
-            let h = displayed[i]
+        for (i, gx) in Self.gridCenters.enumerated() {
+            let h = min(displayed[i], bounds.height - 6)
             let rect = NSRect(
-                x: offsetX + cx - Self.barWidth / 2,
+                x: left + gx * scaleX - Self.barWidth / 2,
                 y: (bounds.height - h) / 2,
                 width: Self.barWidth,
                 height: h)
