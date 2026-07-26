@@ -38,6 +38,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let maxHold: TimeInterval = 300
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        MoveToApplications.offerIfNeeded()
+
         statusItem = StatusItem(
             onSettings: { [weak self] in self?.settingsWindow.show() },
             onHistory: { [weak self] in self?.historyWindow.show() },
