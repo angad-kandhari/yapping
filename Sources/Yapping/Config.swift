@@ -19,6 +19,9 @@ final class ConfigStore: ObservableObject {
     static let shared = ConfigStore()
 
     @Published var localeID: String { didSet { d.set(localeID, forKey: "localeID") } }
+    /// "release" (paste cleaned on key-up), "liveFinal" (type stable phrases
+    /// while talking), "liveVolatile" (type guesses, retract refinements)
+    @Published var insertionMode: String { didSet { d.set(insertionMode, forKey: "insertionMode") } }
     @Published var cleanupEnabled: Bool { didSet { d.set(cleanupEnabled, forKey: "cleanupEnabled") } }
     @Published var ollamaModel: String { didSet { d.set(ollamaModel, forKey: "ollamaModel") } }
     @Published var ollamaHost: String { didSet { d.set(ollamaHost, forKey: "ollamaHost") } }
@@ -34,6 +37,7 @@ final class ConfigStore: ObservableObject {
 
     private init() {
         localeID = d.string(forKey: "localeID") ?? "en_US"
+        insertionMode = d.string(forKey: "insertionMode") ?? "release"
         cleanupEnabled = d.object(forKey: "cleanupEnabled") as? Bool ?? true
         ollamaModel = d.string(forKey: "ollamaModel") ?? "gemma3:4b"
         ollamaHost = d.string(forKey: "ollamaHost") ?? "http://localhost:11434"

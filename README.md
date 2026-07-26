@@ -18,7 +18,7 @@
   <img src="https://img.shields.io/badge/macOS-26+-black" alt="macOS 26+">
   <img src="https://img.shields.io/badge/Swift-6-F05138" alt="Swift 6">
   <img src="https://img.shields.io/badge/processing-100%25%20local-2ea44f" alt="100% local">
-  <img src="https://img.shields.io/github/v/release/angad729/yapping" alt="latest release">
+  <img src="https://img.shields.io/github/v/release/angad-kandhari/yapping" alt="latest release">
 </p>
 
 ---
@@ -56,12 +56,12 @@ telemetry, no word limits.
 Build from source (no Gatekeeper friction):
 
 ```bash
-git clone https://github.com/angad729/yapping.git
+git clone https://github.com/angad-kandhari/yapping.git
 cd yapping
 make install
 ```
 
-Or download the zip from [Releases](https://github.com/angad729/yapping/releases),
+Or download the zip from [Releases](https://github.com/angad-kandhari/yapping/releases),
 move Yapping.app to /Applications, and on first launch allow it under
 System Settings, Privacy & Security ("Open Anyway"), since releases are not
 notarized.

@@ -38,6 +38,15 @@ private struct GeneralSettings: View {
                 }
                 .help("Changing language downloads that on-device speech model once.")
             }
+            Section("Insertion") {
+                Picker("Insert text", selection: $config.insertionMode) {
+                    Text("After release, cleaned").tag("release")
+                    Text("Live: stable phrases, raw").tag("liveFinal")
+                    Text("Live: maximum, raw").tag("liveVolatile")
+                }
+                Text("Live modes type at your cursor while you speak and skip AI cleanup. Stable phrases never rewrite themselves; maximum is instant but visibly refines its guesses.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("Cleanup") {
                 Toggle("Clean up transcripts with a local model", isOn: $config.cleanupEnabled)
                 TextField("Ollama model", text: $config.ollamaModel)
@@ -202,8 +211,8 @@ private struct AboutSettings: View {
             Text("Hold the globe key. Yap. Done.\nEverything stays on your Mac.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
-            Link("github.com/angad729/yapping",
-                 destination: URL(string: "https://github.com/angad729/yapping")!)
+            Link("github.com/angad-kandhari/yapping",
+                 destination: URL(string: "https://github.com/angad-kandhari/yapping")!)
                 .foregroundStyle(Brand.accent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

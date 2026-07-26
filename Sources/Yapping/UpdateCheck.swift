@@ -5,9 +5,9 @@ import Foundation
 /// background phoning home: it runs only when the user asks.
 enum UpdateCheck {
     private static let releasesAPI =
-        "https://api.github.com/repos/angad729/yapping/releases/latest"
+        "https://api.github.com/repos/angad-kandhari/yapping/releases/latest"
     private static let releasesPage =
-        "https://github.com/angad729/yapping/releases/latest"
+        "https://github.com/angad-kandhari/yapping/releases/latest"
 
     static func run() {
         let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"]

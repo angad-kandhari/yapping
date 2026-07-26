@@ -25,6 +25,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var axSnapshot: Task<(String?, String?), Never>?
     private let hud = WaveformHUD()
 
+    // Live insertion state (insertionMode liveFinal / liveVolatile)
+    private var liveMode = false
+    private var liveGateOpen = false
+    private var pendingChunks: [String] = []
+    private var typedFinal = 0
+    private var typedVolatile = 0
+    private var lastVolatile = ""
+
     /// Holds shorter than this are accidental taps; discard them.
     private let minHold: TimeInterval = 0.35
     /// Safety stop for a stuck key.
@@ -70,6 +78,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         transcriber.onLevel = { [weak self] level in
             self?.statusItem.pushLevel(level)
             self?.hud.pushLevel(level)
+        }
+        // Live typing: results hop to the main queue, which serializes them
+        transcriber.onFinal = { [weak self] chunk in
+            DispatchQueue.main.async { self?.liveFinalArrived(chunk) }
+        }
+        transcriber.onVolatile = { [weak self] text in
+            DispatchQueue.main.async { self?.liveVolatileArrived(text) }
         }
 
         requestPermissions()
@@ -125,6 +140,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return (selection, context)
         }
 
+        // Live insertion: hold the first keystrokes until we know whether a
+        // selection exists (a selection means this hold is a voice edit)
+        liveMode = ConfigStore.shared.insertionMode != "release"
+        liveGateOpen = false
+        pendingChunks = []
+        typedFinal = 0
+        typedVolatile = 0
+        lastVolatile = ""
+        if liveMode {
+            Task { [weak self] in
+                let (selection, _) = await self?.axSnapshot?.value ?? (nil, nil)
+                DispatchQueue.main.async {
+                    guard let self, self.liveMode, self.busy else { return }
+                    if let selection, !selection.isEmpty {
+                        // Voice edit takes priority; classic path handles it
+                        self.liveMode = false
+                        self.pendingChunks = []
+                    } else {
+                        self.liveGateOpen = true
+                        let buffered = self.pendingChunks
+                        self.pendingChunks = []
+                        buffered.forEach { self.typeFinalChunk($0) }
+                    }
+                }
+            }
+        }
+
         statusItem.setState(.recording, detail: activeStyle?.name)
         if ConfigStore.shared.hudEnabled { hud.show() }
         Sound.play("Pop")
@@ -159,6 +201,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task {
             defer {
                 busy = false
+                liveMode = false
                 statusItem.setState(.idle)
             }
             let started = await startTask?.value ?? false
@@ -168,7 +211,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             if wasCancelled {
+                // A live hold may already have typed text; take it back
+                await MainActor.run {
+                    let typed = self.typedFinal + self.typedVolatile
+                    if typed > 0 { Typist.backspace(typed) }
+                    self.typedFinal = 0
+                    self.typedVolatile = 0
+                }
                 await transcriber.abort()
+                return
+            }
+            if self.liveMode {
+                await self.finishLiveHold()
                 return
             }
             do {
@@ -221,6 +275,68 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 Sound.play("Basso")
                 Self.notify("Dictation failed", body: "\(error.localizedDescription)")
             }
+        }
+    }
+
+    // MARK: - Live insertion
+
+    private func liveFinalArrived(_ chunk: String) {
+        guard liveMode, busy, !cancelled else { return }
+        guard liveGateOpen else {
+            pendingChunks.append(chunk)
+            return
+        }
+        typeFinalChunk(chunk)
+    }
+
+    private func typeFinalChunk(_ chunk: String) {
+        // Finalized text supersedes whatever volatile guess is on screen
+        if typedVolatile > 0 {
+            Typist.backspace(typedVolatile)
+            typedVolatile = 0
+            lastVolatile = ""
+        }
+        let processed = ConfigStore.shared.applyTextRules(to: chunk)
+        Typist.type(processed)
+        typedFinal += processed.count
+    }
+
+    private func liveVolatileArrived(_ text: String) {
+        guard liveMode, busy, liveGateOpen, !cancelled else { return }
+        // Retype only the suffix that changed since the last guess
+        let common = zip(lastVolatile, text).prefix { $0.0 == $0.1 }.count
+        Typist.backspace(lastVolatile.count - common)
+        Typist.type(String(text.dropFirst(common)))
+        typedVolatile = text.count
+        lastVolatile = text
+    }
+
+    private func finishLiveHold() async {
+        do {
+            // stop() flushes the tail through onFinal; the queued main-thread
+            // hops below then run before our fence, so ordering holds
+            let text = try await transcriber.stop()
+            await MainActor.run {
+                if self.typedVolatile > 0 {
+                    Typist.backspace(self.typedVolatile)
+                    self.typedVolatile = 0
+                }
+                if self.typedFinal > 0 {
+                    // Trailing space so consecutive dictations don't run together
+                    Typist.type(" ")
+                }
+            }
+            let transcript = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !transcript.isEmpty else {
+                Sound.play("Basso")
+                return
+            }
+            HistoryStore.shared.add(
+                raw: transcript, cleaned: transcript,
+                appName: targetApp?.localizedName ?? "Unknown")
+        } catch {
+            NSLog("live dictation error: \(error)")
+            Sound.play("Basso")
         }
     }
 
