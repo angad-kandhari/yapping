@@ -4,7 +4,7 @@ import AppKit
 /// while you talk. No pill, no background. They grow in when the hold
 /// starts, breathe and dance with your voice, and fade out on release.
 final class WaveformHUD {
-    private static let panelSize = NSSize(width: 240, height: 64)
+    private static let panelSize = NSSize(width: 168, height: 46)
 
     private var panel: NSPanel?
     private var waveView: WaveformView?
@@ -80,9 +80,9 @@ private final class WaveformView: NSView {
     // Logo geometry (24-grid), bar centers normalized to start at zero
     private static let gridCenters: [CGFloat] = [0, 3.5, 7, 10.5, 14, 17.5]
     private static let gridSpan: CGFloat = 17.5
-    private static let restHeights: [CGFloat] = [4, 9, 15, 7, 11, 3].map { $0 * 2.2 }
-    private static let barWidth: CGFloat = 7
-    private static let maxHeight: CGFloat = 52
+    private static let restHeights: [CGFloat] = [4, 9, 15, 7, 11, 3].map { $0 * 1.5 }
+    private static let barWidth: CGFloat = 5
+    private static let maxHeight: CGFloat = 36
     private static let gain: Float = 85
     /// Per-bar breathing phase so silence still looks alive, never frozen
     private static let phases: [CGFloat] = [0.0, 1.1, 2.3, 3.6, 4.2, 5.5]
@@ -133,11 +133,11 @@ private final class WaveformView: NSView {
         ctx.saveGraphicsState()
         let shadow = NSShadow()
         shadow.shadowColor = NSColor.black.withAlphaComponent(0.45)
-        shadow.shadowBlurRadius = 7
+        shadow.shadowBlurRadius = 5
         shadow.shadowOffset = NSSize(width: 0, height: -1)
         shadow.set()
 
-        let span = bounds.width * 0.62
+        let span = bounds.width * 0.52
         let scaleX = span / Self.gridSpan
         let left = (bounds.width - span) / 2
         NSColor.white.setFill()
