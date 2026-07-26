@@ -31,9 +31,14 @@ final class StatusItem {
     private var settled = false
     private var timer: Timer?
 
+    private var listenItem: NSMenuItem?
+    private var dropHandler: (([URL]) -> Void)?
+
     init(
         onSettings: @escaping () -> Void,
         onHistory: @escaping () -> Void,
+        onTranscribeFile: @escaping () -> Void,
+        onListen: @escaping () -> Void,
         onSetup: @escaping () -> Void,
         onUpdates: @escaping () -> Void,
         onQuit: @escaping () -> Void
@@ -47,21 +52,26 @@ final class StatusItem {
 
         let target = MenuTarget(
             onSettings: onSettings, onHistory: onHistory,
+            onTranscribeFile: onTranscribeFile, onListen: onListen,
             onSetup: onSetup, onUpdates: onUpdates, onQuit: onQuit)
         objc_setAssociatedObject(menu, "target", target, .OBJC_ASSOCIATION_RETAIN)
 
-        func add(_ title: String, _ action: Selector, _ key: String = "") {
+        func add(_ title: String, _ action: Selector, _ key: String = "") -> NSMenuItem {
             let entry = NSMenuItem(title: title, action: action, keyEquivalent: key)
             entry.target = target
             menu.addItem(entry)
+            return entry
         }
-        add("History", #selector(MenuTarget.history), "h")
-        add("Settings", #selector(MenuTarget.settings), ",")
+        _ = add("History", #selector(MenuTarget.history), "h")
+        _ = add("Settings", #selector(MenuTarget.settings), ",")
         menu.addItem(.separator())
-        add("Setup Assistant", #selector(MenuTarget.setup))
-        add("Check for Updates", #selector(MenuTarget.updates))
+        _ = add("Transcribe File", #selector(MenuTarget.transcribeFile))
+        listenItem = add("Listen to System Audio", #selector(MenuTarget.listen), "l")
         menu.addItem(.separator())
-        add("Quit Yapping", #selector(MenuTarget.quit), "q")
+        _ = add("Setup Assistant", #selector(MenuTarget.setup))
+        _ = add("Check for Updates", #selector(MenuTarget.updates))
+        menu.addItem(.separator())
+        _ = add("Quit Yapping", #selector(MenuTarget.quit), "q")
         item.menu = menu
 
         redraw()
@@ -69,6 +79,25 @@ final class StatusItem {
         timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             self?.tick()
         }
+    }
+
+    /// Reflect Listen mode in the menu.
+    func setListening(_ listening: Bool) {
+        DispatchQueue.main.async {
+            self.listenItem?.title = listening
+                ? "\u{25CF} Stop Listening"
+                : "Listen to System Audio"
+        }
+    }
+
+    /// Files dropped on the menu bar icon become transcription jobs.
+    func acceptDrops(_ handler: @escaping ([URL]) -> Void) {
+        dropHandler = handler
+        guard let button = item.button else { return }
+        let drop = DropView(frame: button.bounds)
+        drop.autoresizingMask = [.width, .height]
+        drop.onFiles = { [weak self] urls in self?.dropHandler?(urls) }
+        button.addSubview(drop)
     }
 
     /// Thread-safe: called from the audio tap thread. Newest level enters on
@@ -152,6 +181,8 @@ final class StatusItem {
 private final class MenuTarget: NSObject {
     private let onSettings: () -> Void
     private let onHistory: () -> Void
+    private let onTranscribeFile: () -> Void
+    private let onListen: () -> Void
     private let onSetup: () -> Void
     private let onUpdates: () -> Void
     private let onQuit: () -> Void
@@ -159,12 +190,16 @@ private final class MenuTarget: NSObject {
     init(
         onSettings: @escaping () -> Void,
         onHistory: @escaping () -> Void,
+        onTranscribeFile: @escaping () -> Void,
+        onListen: @escaping () -> Void,
         onSetup: @escaping () -> Void,
         onUpdates: @escaping () -> Void,
         onQuit: @escaping () -> Void
     ) {
         self.onSettings = onSettings
         self.onHistory = onHistory
+        self.onTranscribeFile = onTranscribeFile
+        self.onListen = onListen
         self.onSetup = onSetup
         self.onUpdates = onUpdates
         self.onQuit = onQuit
@@ -172,7 +207,38 @@ private final class MenuTarget: NSObject {
 
     @objc func settings() { onSettings() }
     @objc func history() { onHistory() }
+    @objc func transcribeFile() { onTranscribeFile() }
+    @objc func listen() { onListen() }
     @objc func setup() { onSetup() }
     @objc func updates() { onUpdates() }
     @objc func quit() { onQuit() }
+}
+
+/// Transparent drag target layered over the status item button.
+private final class DropView: NSView {
+    var onFiles: (([URL]) -> Void)?
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        registerForDraggedTypes([.fileURL])
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        .copy
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let urls = sender.draggingPasteboard.readObjects(
+            forClasses: [NSURL.self], options: nil) as? [URL] ?? []
+        guard !urls.isEmpty else { return false }
+        onFiles?(urls)
+        return true
+    }
+
+    // Clicks forward to the status button so the menu still opens
+    override func mouseDown(with event: NSEvent) {
+        (superview as? NSStatusBarButton)?.performClick(nil)
+    }
 }

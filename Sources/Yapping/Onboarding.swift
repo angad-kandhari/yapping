@@ -50,6 +50,16 @@ struct OnboardingView: View {
             checkRow("Ollama with a model (optional)", ok: ollama,
                      detail: "For filler-word cleanup. Without it, raw transcripts are pasted.",
                      action: { NSWorkspace.shared.open(URL(string: "https://ollama.com")!) })
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "waveform.circle")
+                    .foregroundStyle(.secondary).font(.title3)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("System audio (optional)").bold()
+                    Text("Listen mode asks for System Audio Recording Only the first time you use it.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
 
             if allRequiredGreen {
                 Label("Ready. Hold the globe key and yap.", systemImage: "checkmark.seal.fill")

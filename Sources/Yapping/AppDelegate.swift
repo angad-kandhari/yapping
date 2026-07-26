@@ -13,6 +13,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var historyWindow = UtilityWindow(title: "Yapping History") { HistoryView() }
     private lazy var onboardingWindow = UtilityWindow(title: "Welcome to yapping") { OnboardingView() }
     private lazy var updatesWindow = UtilityWindow(title: "Yapping Updates") { UpdatesView() }
+    private let listenController = ListenController()
+    private let fileModel = TranscriptModel()
+    private lazy var fileWindow = UtilityWindow(title: "Yapping Transcript") {
+        [weak self] in TranscriptView(model: self?.fileModel ?? TranscriptModel())
+    }
+    private lazy var listenWindow = UtilityWindow(title: "Yapping Listen") {
+        [weak self] in
+        TranscriptView(
+            model: self?.listenController.model ?? TranscriptModel(),
+            onStop: { self?.listenController.stop() })
+    }
 
     private var busy = false
     private var cancelled = false
@@ -43,13 +54,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = StatusItem(
             onSettings: { [weak self] in self?.settingsWindow.show() },
             onHistory: { [weak self] in self?.historyWindow.show() },
+            onTranscribeFile: { [weak self] in self?.pickAndTranscribeFile() },
+            onListen: { [weak self] in
+                self?.listenController.toggle()
+                self?.listenWindow.show()
+            },
             onSetup: { [weak self] in self?.onboardingWindow.show() },
             onUpdates: { [weak self] in self?.updatesWindow.show() },
             onQuit: { [weak self] in
                 self?.fnMonitor.stop()
+                self?.listenController.stop()
                 NSApp.terminate(nil)
             }
         )
+        listenController.onStateChange = { [weak self] listening in
+            self?.statusItem.setListening(listening)
+        }
+        statusItem.acceptDrops { [weak self] urls in
+            guard let self, let url = urls.first else { return }
+            self.fileWindow.show()
+            Task { await FileTranscriber.transcribe(url: url, into: self.fileModel) }
+        }
 
         // First run, or any missing grant: open the setup assistant
         let ready = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
@@ -133,6 +158,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let stripped = String(text[..<range.lowerBound])
         return stripped.isEmpty ? nil : stripped
+    }
+
+    private func pickAndTranscribeFile() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.audio, .movie, .mpeg4Movie, .quickTimeMovie, .mp3, .wav]
+        panel.allowsMultipleSelection = false
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        fileWindow.show()
+        Task { await FileTranscriber.transcribe(url: url, into: fileModel) }
     }
 
     private func requestPermissions() {
