@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <path id="sq" d="M512 0C289.53 0 172.55 0 89.06 45.53A360 360 0 0 0 45.53 89.06C0 172.55 0 289.53 0 512s0 339.45 45.53 422.94a360 360 0 0 0 43.53 43.53C172.55 1024 289.53 1024 512 1024s339.45 0 422.94-45.53a360 360 0 0 0 43.53-43.53C1024 851.45 1024 734.47 1024 512s0-339.45-45.53-422.94a360 360 0 0 0-43.53-43.53C851.45 0 734.47 0 512 0z"></path>
+    <clipPath id="sqc"><use href="#sq"></use></clipPath>
+    <linearGradient id="bev" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.06"></stop><stop offset="0.12" stop-color="#FFFFFF" stop-opacity="0"></stop></linearGradient>
+  </defs>
+  <g clip-path="url(#sqc)">
+    <use href="#sq" fill="#0E0E0E"></use>
+    <g fill="#F4F4F2">
+      <rect x="162" y="422" width="70" height="180" rx="35"></rect>
+      <rect x="278" y="332" width="70" height="360" rx="35"></rect>
+      <rect x="394" y="242" width="70" height="540" rx="35"></rect>
+      <rect x="510" y="372" width="70" height="280" rx="35"></rect>
+      <rect x="626" y="302" width="70" height="420" rx="35"></rect>
+      <rect x="742" y="432" width="70" height="160" rx="35"></rect>
+    </g>
+    <g transform="rotate(-12 700 300)">
+      <rect x="560" y="240" width="280" height="118" rx="59" fill="#FFD400"></rect>
+      <text x="700" y="322" text-anchor="middle" font-family="Geist, sans-serif" font-weight="700" font-size="64" letter-spacing="3.8" fill="#0E0E0E">YAP</text>
+    </g>
+    <use href="#sq" fill="url(#bev)"></use>
+  </g>
+</svg>

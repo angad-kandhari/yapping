@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "yap",
+    name: "yapping",
     platforms: [.macOS("26.0")],
     targets: [
         .executableTarget(
-            name: "yap",
-            path: "Sources/Yap",
+            name: "yapping",
+            path: "Sources/Yapping",
             swiftSettings: [.swiftLanguageMode(.v5)]
         )
     ]

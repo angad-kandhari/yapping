@@ -1,4 +1,4 @@
-# yap
+# yapping
 
 Hold
 the Globe/fn key, speak, release - text appears at your cursor.

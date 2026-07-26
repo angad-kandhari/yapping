@@ -1,6 +1,6 @@
 # Yap Roadmap
 
-Yap is hold-to-talk dictation for macOS: hold the Globe/fn key, yap, release,
+Yapping is hold-to-talk dictation for macOS: hold the Globe/fn key, yap, release,
 and clean text lands at your cursor. Fully on-device.
 
 This roadmap is grounded in market research (July 2026) across user forums,

@@ -1,5 +1,5 @@
-APP      := .build/Yap.app
-BINARY   := .build/arm64-apple-macosx/release/yap
+APP      := .build/Yapping.app
+BINARY   := .build/arm64-apple-macosx/release/yapping
 IDENTITY := $(shell security find-identity -v -p codesigning | grep -o '"Apple Development[^"]*"' | head -1)
 
 .PHONY: build bundle sign install run clean
@@ -10,10 +10,9 @@ build:
 bundle: build
 	rm -rf $(APP)
 	mkdir -p $(APP)/Contents/MacOS $(APP)/Contents/Resources
-	cp $(BINARY) $(APP)/Contents/MacOS/yap
+	cp $(BINARY) $(APP)/Contents/MacOS/yapping
 	cp Support/Info.plist $(APP)/Contents/
 	cp Support/AppIcon.icns $(APP)/Contents/Resources/
-	cp icon-pack/menubar/dictateTemplate.png icon-pack/menubar/dictateTemplate@2x.png $(APP)/Contents/Resources/
 
 # A stable (non ad-hoc) signature keeps TCC grants valid across rebuilds
 sign: bundle
@@ -25,14 +24,14 @@ else
 endif
 
 install: sign
-	pkill -x yap || true
-	rm -rf /Applications/Yap.app
-	ditto $(APP) /Applications/Yap.app
-	open -ga /Applications/Yap.app
-	@echo "installed and launched: /Applications/Yap.app"
+	pkill -x yapping || true
+	rm -rf /Applications/Yapping.app
+	ditto $(APP) /Applications/Yapping.app
+	open -ga /Applications/Yapping.app
+	@echo "installed and launched: /Applications/Yapping.app"
 
 run: sign
-	pkill -x yap || true
+	pkill -x yapping || true
 	open -ga $(APP)
 
 clean:

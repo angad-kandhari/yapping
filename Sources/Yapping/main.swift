@@ -5,7 +5,7 @@ import AppKit
 let others = NSRunningApplication.runningApplications(withBundleIdentifier: "com.angad.dictate")
     .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
 if !others.isEmpty {
-    NSLog("another yap instance is already running, exiting")
+    NSLog("another yapping instance is already running, exiting")
     exit(0)
 }
 

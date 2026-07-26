@@ -50,7 +50,7 @@ final class Transcriber {
         self.analyzer = analyzer
 
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
-            throw YapError.noAudioFormat
+            throw YappingError.noAudioFormat
         }
         analyzerFormat = format
 
@@ -142,6 +142,6 @@ final class Transcriber {
     }
 }
 
-enum YapError: Error {
+enum YappingError: Error {
     case noAudioFormat
 }

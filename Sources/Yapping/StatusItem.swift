@@ -11,14 +11,14 @@ final class StatusItem {
         case idle, recording, processing
     }
 
-    // Logo geometry from icon-pack/menubar/dictate-menubar.svg (24-grid:
-    // bars at x 4/8/12/16/20, heights 4/10/16/10/4, stroke 2, round caps),
-    // scaled 0.75x into an 18 pt menu bar canvas.
+    // Logo geometry from icon-pack/menubar/yapping-menubar.svg (24-grid:
+    // six bars at x 3.5/7/10.5/14/17.5/21, heights 4/9/15/7/11/3, stroke 2,
+    // round caps), scaled 0.75x into an 18 pt menu bar canvas.
     private static let canvas: CGFloat = 18
     private static let barWidth: CGFloat = 1.5
-    private static let barCenters: [CGFloat] = [3, 6, 9, 12, 15]
-    private static let restHeights: [CGFloat] = [3, 7.5, 12, 7.5, 3]
-    private static let minHeight: CGFloat = 3
+    private static let barCenters: [CGFloat] = [2.625, 5.25, 7.875, 10.5, 13.125, 15.75]
+    private static let restHeights: [CGFloat] = [3, 6.75, 11.25, 5.25, 8.25, 2.25]
+    private static let minHeight: CGFloat = 2.25
     private static let maxHeight: CGFloat = 16
     /// RMS to height scaling: normal speech RMS is roughly 0.01-0.1.
     private static let gain: Float = 80
@@ -26,7 +26,7 @@ final class StatusItem {
     private let item: NSStatusItem
     private let statusLine = NSMenuItem(title: "Hold \u{1F310} (fn) to talk", action: nil, keyEquivalent: "")
     private var state: State = .idle
-    private var levels: [Float] = Array(repeating: 0, count: 5)
+    private var levels: [Float] = Array(repeating: 0, count: 6)
     private var displayed: [CGFloat] = StatusItem.restHeights
     private var settled = false
     private var timer: Timer?
@@ -38,7 +38,7 @@ final class StatusItem {
         statusLine.isEnabled = false
         menu.addItem(statusLine)
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit Yap", action: #selector(MenuTarget.quit), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "Quit Yapping", action: #selector(MenuTarget.quit), keyEquivalent: "q")
         let target = MenuTarget(onQuit: onQuit)
         quit.target = target
         objc_setAssociatedObject(menu, "target", target, .OBJC_ASSOCIATION_RETAIN)
@@ -69,7 +69,7 @@ final class StatusItem {
             case .idle:
                 self.statusLine.title = "Hold \u{1F310} (fn) to talk"
             case .recording:
-                self.levels = Array(repeating: 0, count: 5)
+                self.levels = Array(repeating: 0, count: 6)
                 self.statusLine.title = "Listening..."
             case .processing:
                 self.statusLine.title = "Transcribing..."
