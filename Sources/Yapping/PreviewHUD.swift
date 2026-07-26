@@ -1,36 +1,72 @@
 import AppKit
 
-/// The yapping logo, big, dancing above the Dock while you talk.
-///
-/// A frosted pill fades in when the hold starts. The six brand bars sit at
-/// their logo rest pose in silence and dance with the live mic level while
-/// you speak. Fades out on release. No text, just the waveform.
+/// The Dock companion. Two states:
+/// - idle: a tiny dim capsule sitting just above the Dock, barely there
+/// - listening: on fn-hold it blooms into a wide, short pill where the
+///   yapping bars dance with your voice; shrinks back on release
 final class WaveformHUD {
-    private var panel: NSPanel?
-    private var waveView: WaveformView?
+    // Panel is always active-size; the pill animates inside it
+    private static let panelSize = NSSize(width: 220, height: 48)
+    private static let idleFrame = NSRect(x: (220 - 64) / 2, y: 0, width: 64, height: 9)
+    private static let activeFrame = NSRect(x: 10, y: 0, width: 200, height: 42)
 
-    func show() {
-        if panel == nil { makePanel() }
-        position()
-        waveView?.reset()
-        panel?.alphaValue = 0
-        panel?.orderFrontRegardless()
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.18
-            panel?.animator().alphaValue = 1
+    private var panel: NSPanel?
+    private var pill: NSVisualEffectView?
+    private var idleBar: NSView?
+    private var waveView: WaveformView?
+    private var visible = false
+
+    /// Show the idle sliver (call at launch and on release).
+    func showIdle() {
+        DispatchQueue.main.async {
+            if self.panel == nil { self.makePanel() }
+            if !self.visible {
+                self.position()
+                self.panel?.alphaValue = 1
+                self.panel?.orderFrontRegardless()
+                self.visible = true
+            }
+            self.waveView?.stop()
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.22
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                self.pill?.animator().frame = Self.idleFrame
+                self.pill?.layer?.cornerRadius = Self.idleFrame.height / 2
+                self.waveView?.animator().alphaValue = 0
+                self.idleBar?.animator().alphaValue = 1
+            }
         }
-        waveView?.start()
     }
 
-    func hide() {
+    /// Bloom into the listening pill (call on fn-press).
+    func showActive() {
+        DispatchQueue.main.async {
+            if self.panel == nil { self.makePanel() }
+            if !self.visible {
+                self.position()
+                self.panel?.alphaValue = 1
+                self.panel?.orderFrontRegardless()
+                self.visible = true
+            }
+            self.waveView?.reset()
+            self.waveView?.start()
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.18
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                self.pill?.animator().frame = Self.activeFrame
+                self.pill?.layer?.cornerRadius = Self.activeFrame.height / 2
+                self.waveView?.animator().alphaValue = 1
+                self.idleBar?.animator().alphaValue = 0
+            }
+        }
+    }
+
+    /// Remove entirely (setting turned off).
+    func remove() {
         DispatchQueue.main.async {
             self.waveView?.stop()
-            NSAnimationContext.runAnimationGroup({ ctx in
-                ctx.duration = 0.25
-                self.panel?.animator().alphaValue = 0
-            }, completionHandler: {
-                self.panel?.orderOut(nil)
-            })
+            self.panel?.orderOut(nil)
+            self.visible = false
         }
     }
 
@@ -40,31 +76,41 @@ final class WaveformHUD {
     }
 
     private func makePanel() {
-        let size = NSSize(width: 96, height: 64)
         let panel = NSPanel(
-            contentRect: NSRect(origin: .zero, size: size),
+            contentRect: NSRect(origin: .zero, size: Self.panelSize),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered, defer: false)
         panel.level = .statusBar
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.hasShadow = true
+        panel.hasShadow = false
         panel.ignoresMouseEvents = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
-        let effect = NSVisualEffectView(frame: NSRect(origin: .zero, size: size))
-        effect.material = .hudWindow
-        effect.state = .active
-        effect.wantsLayer = true
-        effect.layer?.cornerRadius = size.height / 2
-        effect.layer?.masksToBounds = true
+        let pill = NSVisualEffectView(frame: Self.idleFrame)
+        pill.material = .hudWindow
+        pill.state = .active
+        pill.wantsLayer = true
+        pill.layer?.cornerRadius = Self.idleFrame.height / 2
+        pill.layer?.masksToBounds = true
 
-        let wave = WaveformView(frame: effect.bounds)
+        // Faint capsule so the idle sliver reads against any wallpaper
+        let idleBar = NSView(frame: pill.bounds)
+        idleBar.autoresizingMask = [.width, .height]
+        idleBar.wantsLayer = true
+        idleBar.layer?.backgroundColor =
+            NSColor.white.withAlphaComponent(0.22).cgColor
+        pill.addSubview(idleBar)
+
+        let wave = WaveformView(frame: NSRect(origin: .zero, size: Self.activeFrame.size))
         wave.autoresizingMask = [.width, .height]
-        effect.addSubview(wave)
-        panel.contentView?.addSubview(effect)
+        wave.alphaValue = 0
+        pill.addSubview(wave)
 
-        waveView = wave
+        panel.contentView?.addSubview(pill)
+        self.pill = pill
+        self.idleBar = idleBar
+        self.waveView = wave
         self.panel = panel
     }
 
@@ -73,20 +119,21 @@ final class WaveformHUD {
         let frame = screen.visibleFrame  // excludes the Dock
         panel.setFrameOrigin(NSPoint(
             x: frame.midX - panel.frame.width / 2,
-            y: frame.minY + 14))
+            y: frame.minY + 10))
     }
 }
 
-/// The six logo bars at 2.5x menu bar scale, eased at 30 fps.
+/// The six logo bars, stretched wide and kept short, eased at 30 fps.
 private final class WaveformView: NSView {
-    // Logo geometry (24-grid), scaled 2.5x, centered in the pill
-    private static let scale: CGFloat = 2.5
-    private static let barCenters: [CGFloat] = [3.5, 7, 10.5, 14, 17.5, 21].map { $0 * scale }
-    private static let restHeights: [CGFloat] = [4, 9, 15, 7, 11, 3].map { $0 * scale }
-    private static let barWidth: CGFloat = 2 * scale
-    private static let maxHeight: CGFloat = 44
+    // Logo geometry (24-grid): wide horizontal spread, compact height
+    private static let scaleX: CGFloat = 7
+    private static let scaleY: CGFloat = 1.5
+    private static let barCenters: [CGFloat] = [3.5, 7, 10.5, 14, 17.5, 21].map { $0 * scaleX }
+    private static let restHeights: [CGFloat] = [4, 9, 15, 7, 11, 3].map { $0 * scaleY }
+    private static let barWidth: CGFloat = 5
+    private static let maxHeight: CGFloat = 32
     private static let gain: Float = 80
-    private static let contentWidth: CGFloat = 22 * scale + 2 * scale  // last center + bar
+    private static let contentWidth: CGFloat = 24.5 * scaleX
 
     private var levels: [Float] = Array(repeating: 0, count: 6)
     private var displayed: [CGFloat] = WaveformView.restHeights

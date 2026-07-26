@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var maxTimer: Timer?
     private var targetApp: NSRunningApplication?
     private var localeWatcher: AnyCancellable?
+    private var hudWatcher: AnyCancellable?
     private var activeStyle: Style?
     private var axSnapshot: Task<(String?, String?), Never>?
     private let hud = WaveformHUD()
@@ -50,6 +51,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
+
+        // The Dock companion lives whenever the setting is on
+        if ConfigStore.shared.hudEnabled { hud.showIdle() }
+        hudWatcher = ConfigStore.shared.$hudEnabled
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] enabled in
+                if enabled { self?.hud.showIdle() } else { self?.hud.remove() }
+            }
 
         // Language switches trigger a one-time model download for that locale
         localeWatcher = ConfigStore.shared.$localeID
@@ -117,7 +127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         statusItem.setState(.recording, detail: activeStyle?.name)
-        if ConfigStore.shared.hudEnabled { hud.show() }
+        if ConfigStore.shared.hudEnabled { hud.showActive() }
         Sound.play("Pop")
 
         startTask = Task {
@@ -143,7 +153,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let wasCancelled = cancelled
-        hud.hide()
+        if ConfigStore.shared.hudEnabled { hud.showIdle() }
         statusItem.setState(wasCancelled ? .idle : .processing)
         if !wasCancelled { Sound.play("Tink") }
 
