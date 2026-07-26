@@ -9,9 +9,11 @@ build:
 
 bundle: build
 	rm -rf $(APP)
-	mkdir -p $(APP)/Contents/MacOS
+	mkdir -p $(APP)/Contents/MacOS $(APP)/Contents/Resources
 	cp $(BINARY) $(APP)/Contents/MacOS/dictate
 	cp Support/Info.plist $(APP)/Contents/
+	cp Support/AppIcon.icns $(APP)/Contents/Resources/
+	cp icon-pack/menubar/dictateTemplate.png icon-pack/menubar/dictateTemplate@2x.png $(APP)/Contents/Resources/
 
 # A stable (non ad-hoc) signature keeps TCC grants valid across rebuilds
 sign: bundle

@@ -18,9 +18,17 @@ final class StatusItem {
     private var state: State = .idle
     private var timer: Timer?
 
+    /// Template glyph from the icon pack; adapts to light/dark menu bars.
+    /// Falls back to an emoji when running outside the app bundle.
+    private let glyph: NSImage? = {
+        guard let image = Bundle.main.image(forResource: "dictateTemplate") else { return nil }
+        image.isTemplate = true
+        return image
+    }()
+
     init(onQuit: @escaping () -> Void) {
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.title = "\u{1F399}\u{FE0F}"
+        showGlyph()
 
         let menu = NSMenu()
         statusLine.isEnabled = false
@@ -52,15 +60,27 @@ final class StatusItem {
             self.state = state
             switch state {
             case .idle:
-                self.item.button?.title = "\u{1F399}\u{FE0F}"
+                self.showGlyph()
                 self.statusLine.title = "Hold \u{1F310} (fn) to talk"
             case .recording:
                 self.levels = Array(repeating: 0, count: 8)
+                self.item.button?.image = nil
                 self.statusLine.title = "Listening..."
             case .processing:
+                self.item.button?.image = nil
                 self.item.button?.title = "\u{23F3}"
                 self.statusLine.title = "Transcribing..."
             }
+        }
+    }
+
+    private func showGlyph() {
+        if let glyph {
+            item.button?.title = ""
+            item.button?.image = glyph
+        } else {
+            item.button?.image = nil
+            item.button?.title = "\u{1F399}\u{FE0F}"
         }
     }
 

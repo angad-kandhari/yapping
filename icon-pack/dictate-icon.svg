@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <path id="sqp" d="M512 0C289.53 0 172.55 0 89.06 45.53A360 360 0 0 0 45.53 89.06C0 172.55 0 289.53 0 512s0 339.45 45.53 422.94a360 360 0 0 0 43.53 43.53C172.55 1024 289.53 1024 512 1024s339.45 0 422.94-45.53a360 360 0 0 0 43.53-43.53C1024 851.45 1024 734.47 1024 512s0-339.45-45.53-422.94a360 360 0 0 0-43.53-43.53C851.45 0 734.47 0 512 0z"></path>
+    <clipPath id="sqc"><use href="#sqp"></use></clipPath>
+    <linearGradient id="bgv" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9E77ED"></stop><stop offset="1" stop-color="#6941C6"></stop></linearGradient>
+    <linearGradient id="ggl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"></stop><stop offset="1" stop-color="#E9D7FE"></stop></linearGradient>
+    <linearGradient id="shn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.32"></stop><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"></stop></linearGradient>
+    <linearGradient id="dkb" x1="0" y1="0" x2="0" y2="1"><stop offset="0.55" stop-color="#2A1156" stop-opacity="0"></stop><stop offset="1" stop-color="#2A1156" stop-opacity="0.28"></stop></linearGradient>
+    <filter id="gsh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="14" stdDeviation="20" flood-color="#3B1A78" flood-opacity="0.45"></feDropShadow></filter>
+  </defs>
+  <g clip-path="url(#sqc)">
+    <use href="#sqp" fill="url(#bgv)"></use>
+    <g fill="url(#ggl)" filter="url(#gsh)">
+      <rect x="222" y="417" width="76" height="190" rx="38"></rect>
+      <rect x="348" y="337" width="76" height="350" rx="38"></rect>
+      <rect x="474" y="242" width="76" height="540" rx="38"></rect>
+      <rect x="600" y="337" width="76" height="350" rx="38"></rect>
+      <rect x="726" y="417" width="76" height="190" rx="38"></rect>
+    </g>
+    <path d="M0 0h1024v400C800 490 224 490 0 400z" fill="url(#shn)"></path>
+    <use href="#sqp" fill="url(#dkb)"></use>
+    <use href="#sqp" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="10"></use>
+  </g>
+</svg>
