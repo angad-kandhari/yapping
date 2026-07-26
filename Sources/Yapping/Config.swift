@@ -26,6 +26,9 @@ final class ConfigStore: ObservableObject {
     @Published var dictionary: [String] { didSet { saveJSON(dictionary, key: "dictionary") } }
     @Published var replacements: [Replacement] { didSet { saveJSON(replacements, key: "replacements") } }
     @Published var snippets: [Snippet] { didSet { saveJSON(snippets, key: "snippets") } }
+    @Published var styles: [Style] { didSet { saveJSON(styles, key: "styles") } }
+    @Published var useFieldContext: Bool { didSet { d.set(useFieldContext, forKey: "useFieldContext") } }
+    @Published var hudEnabled: Bool { didSet { d.set(hudEnabled, forKey: "hudEnabled") } }
 
     private let d = UserDefaults.standard
 
@@ -38,6 +41,9 @@ final class ConfigStore: ObservableObject {
         dictionary = Self.loadJSON([String].self, key: "dictionary") ?? []
         replacements = Self.loadJSON([Replacement].self, key: "replacements") ?? []
         snippets = Self.loadJSON([Snippet].self, key: "snippets") ?? []
+        styles = Self.loadJSON([Style].self, key: "styles") ?? Style.defaults
+        useFieldContext = d.object(forKey: "useFieldContext") as? Bool ?? true
+        hudEnabled = d.object(forKey: "hudEnabled") as? Bool ?? false
     }
 
     private func saveJSON<T: Encodable>(_ value: T, key: String) {
