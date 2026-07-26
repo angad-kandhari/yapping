@@ -12,7 +12,7 @@
 <style>
   :root {
     --bg: #0b0b0f; --bg2: #101016; --surface: #16161d; --line: #23232c;
-    --yellow: #f5d145; --text: #f4f4f6; --muted: #9a9aa6; --dim: #6a6a76;
+    --yellow: #FF5A1F; --text: #f4f4f6; --muted: #9a9aa6; --dim: #6a6a76;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -267,7 +267,7 @@ make install</code></pre>
   }
   function swap() {
     el.style.transition = "opacity .25s"; el.style.opacity = 0;
-    setTimeout(() => { el.textContent = clean; el.style.color = "#f5d145"; el.style.opacity = 1; }, 260);
+    setTimeout(() => { el.textContent = clean; el.style.color = "#FF5A1F"; el.style.opacity = 1; }, 260);
     setTimeout(() => { el.style.color = ""; i = 0; el.textContent = ""; typeRaw(); }, 4200);
   }
   typeRaw();

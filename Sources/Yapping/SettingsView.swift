@@ -204,7 +204,7 @@ private struct AboutSettings: View {
                 .foregroundStyle(.secondary)
             Link("github.com/angad729/yapping",
                  destination: URL(string: "https://github.com/angad729/yapping")!)
-                .foregroundStyle(Brand.yellow)
+                .foregroundStyle(Brand.accent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

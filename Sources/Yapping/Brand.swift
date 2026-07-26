@@ -2,10 +2,10 @@ import AppKit
 import SwiftUI
 
 /// The yapping design system, living inside the system appearance: native
-/// light/dark surfaces, YAP yellow accent, the six-bar waveform as the
+/// light/dark surfaces, brand orange accent (#FF5A1F), the six-bar waveform as the
 /// recurring motif, lowercase headers.
 enum Brand {
-    static let yellow = Color(red: 0.96, green: 0.82, blue: 0.27)
+    static let accent = Color(red: 1.0, green: 0.353, blue: 0.122)  // #FF5A1F
 
     /// Logo bar heights on the 24-grid, shared with the menu bar and HUD.
     static let barHeights: [CGFloat] = [4, 9, 15, 7, 11, 3]
@@ -44,7 +44,7 @@ struct BrandChrome<Content: View>: View {
                     .foregroundStyle(.primary)
                 Text(title.lowercased())
                     .font(.system(size: 17, weight: .regular))
-                    .foregroundStyle(Brand.yellow)
+                    .foregroundStyle(Brand.accent)
                 Spacer()
             }
             .padding(.horizontal, 20)
@@ -54,7 +54,7 @@ struct BrandChrome<Content: View>: View {
             content
         }
         .background(Color(nsColor: .windowBackgroundColor))
-        .tint(Brand.yellow)
+        .tint(Brand.accent)
     }
 }
 
@@ -76,7 +76,7 @@ struct BrandTabs: View {
                         .padding(.vertical, 6)
                         .background(
                             Capsule().fill(selection == index
-                                ? Brand.yellow
+                                ? Brand.accent
                                 : Color.primary.opacity(0.07)))
                 }
                 .buttonStyle(.plain)
