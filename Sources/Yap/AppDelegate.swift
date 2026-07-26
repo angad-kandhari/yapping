@@ -44,7 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task {
             try? await transcriber.ensureModel()
             await Cleanup.warmUp()
-            NSLog("dictate ready: hold the globe/fn key to talk")
+            NSLog("yap ready: hold the globe/fn key to talk")
         }
     }
 

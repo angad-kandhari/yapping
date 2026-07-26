@@ -38,7 +38,7 @@ final class StatusItem {
         statusLine.isEnabled = false
         menu.addItem(statusLine)
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit Dictate", action: #selector(MenuTarget.quit), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "Quit Yap", action: #selector(MenuTarget.quit), keyEquivalent: "q")
         let target = MenuTarget(onQuit: onQuit)
         quit.target = target
         objc_setAssociatedObject(menu, "target", target, .OBJC_ASSOCIATION_RETAIN)

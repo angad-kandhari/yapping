@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "dictate",
+    name: "yap",
     platforms: [.macOS("26.0")],
     targets: [
         .executableTarget(
-            name: "dictate",
-            path: "Sources/Dictate",
+            name: "yap",
+            path: "Sources/Yap",
             swiftSettings: [.swiftLanguageMode(.v5)]
         )
     ]

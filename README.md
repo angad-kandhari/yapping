@@ -1,6 +1,6 @@
-# dictate (Swift)
+# yap
 
-Native macOS rewrite of [dictate](https://github.com/angad729/dictate): hold
+Hold
 the Globe/fn key, speak, release - text appears at your cursor.
 
 Compared to the Python version, transcription uses Apple's on-device
@@ -22,9 +22,9 @@ and asks for Microphone, Input Monitoring, and Accessibility permissions.
 
 ## Layout
 
-- `Sources/Dictate/FnKeyMonitor.swift` - listen-only CGEventTap on the fn key
-- `Sources/Dictate/Transcriber.swift`  - AVAudioEngine + SpeechAnalyzer streaming
-- `Sources/Dictate/Cleanup.swift`      - Ollama polish with length guards
-- `Sources/Dictate/Paster.swift`       - clipboard + synthetic cmd-V insertion
-- `Sources/Dictate/StatusItem.swift`   - menu bar icon with live waveform
-- `Sources/Dictate/AppDelegate.swift`  - hold-to-talk state machine
+- `Sources/Yap/FnKeyMonitor.swift` - listen-only CGEventTap on the fn key
+- `Sources/Yap/Transcriber.swift`  - AVAudioEngine + SpeechAnalyzer streaming
+- `Sources/Yap/Cleanup.swift`      - Ollama polish with length guards
+- `Sources/Yap/Paster.swift`       - clipboard + synthetic cmd-V insertion
+- `Sources/Yap/StatusItem.swift`   - menu bar icon with live waveform
+- `Sources/Yap/AppDelegate.swift`  - hold-to-talk state machine

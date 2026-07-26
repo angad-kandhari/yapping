@@ -57,7 +57,7 @@ final class FnKeyMonitor {
             )
             if created == nil {
                 if attempts == 0 {
-                    NSLog("waiting for Input Monitoring permission: enable 'Dictate' under System Settings -> Privacy & Security -> Input Monitoring, then relaunch")
+                    NSLog("waiting for Input Monitoring permission: enable 'Yap' under System Settings -> Privacy & Security -> Input Monitoring, then relaunch")
                     _ = CGRequestListenEventAccess()
                 }
                 attempts += 1
