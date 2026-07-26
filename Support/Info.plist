@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key><string>com.angad.dictate</string>
+    <key>CFBundleName</key><string>Dictate</string>
+    <key>CFBundleExecutable</key><string>dictate</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>0.1.0</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>LSMinimumSystemVersion</key><string>26.0</string>
+    <key>LSUIElement</key><true/>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Dictate records your voice while you hold the fn key so it can type what you say.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Dictate transcribes your speech on-device to type it at your cursor.</string>
+</dict>
+</plist>
