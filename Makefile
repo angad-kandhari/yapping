@@ -41,14 +41,15 @@ clean:
 # Cut a GitHub release: make release NOTES=notes.md (version from Info.plist)
 VERSION := $(shell /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Support/Info.plist)
 
+# Stable asset name so releases/latest/download/Yapping.dmg always works
 dmg: sign
-	bash scripts/make-dmg.sh .build/Yapping-v$(VERSION).dmg
+	bash scripts/make-dmg.sh .build/Yapping.dmg
 
 release: sign dmg
 	ditto -c -k --keepParent $(APP) .build/Yapping-v$(VERSION).zip
 	git tag v$(VERSION)
 	git push origin v$(VERSION)
 	gh release create v$(VERSION) \
-		.build/Yapping-v$(VERSION).dmg \
+		.build/Yapping.dmg \
 		.build/Yapping-v$(VERSION).zip \
 		--title "Yapping v$(VERSION)" $(if $(NOTES),--notes-file $(NOTES),--generate-notes)
