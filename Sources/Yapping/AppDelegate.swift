@@ -52,13 +52,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
 
-        // The Dock companion lives whenever the setting is on
-        if ConfigStore.shared.hudEnabled { hud.showIdle() }
+        // The waveform only appears while talking; hide it if turned off mid-hold
         hudWatcher = ConfigStore.shared.$hudEnabled
             .removeDuplicates()
             .dropFirst()
             .sink { [weak self] enabled in
-                if enabled { self?.hud.showIdle() } else { self?.hud.remove() }
+                if !enabled { self?.hud.hide() }
             }
 
         // Language switches trigger a one-time model download for that locale
@@ -127,7 +126,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         statusItem.setState(.recording, detail: activeStyle?.name)
-        if ConfigStore.shared.hudEnabled { hud.showActive() }
+        if ConfigStore.shared.hudEnabled { hud.show() }
         Sound.play("Pop")
 
         startTask = Task {
@@ -153,7 +152,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let wasCancelled = cancelled
-        if ConfigStore.shared.hudEnabled { hud.showIdle() }
+        hud.hide()
         statusItem.setState(wasCancelled ? .idle : .processing)
         if !wasCancelled { Sound.play("Tink") }
 
