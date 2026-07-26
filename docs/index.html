@@ -24,7 +24,9 @@
   .btn-solid:hover { background: #FFFFFF; opacity: 1; }
   .card { background: #1A1A19; border-radius: 16px; box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px rgba(0,0,0,0.35); transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1); }
   .card:hover { transform: translateY(-2px); }
-  @keyframes yapbar { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+  /* Matches the app's Dock waveform: bars breathe around their logo rest
+     pose and surge from the center, not from the baseline */
+  @keyframes yapbar { 0%, 100% { transform: scaleY(0.78); } 50% { transform: scaleY(1.45); } }
   @keyframes yapmarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   details > summary { list-style: none; cursor: pointer; }
   details > summary::-webkit-details-marker { display: none; }
@@ -96,14 +98,13 @@
       <a class="btn-solid" href="https://github.com/angad729/yapping/releases/latest" style="padding: 14px 28px; font-size: 13px;">Download for macOS</a>
       <a href="https://github.com/angad729/yapping" style="padding: 14px 28px; border-radius: 999px; border: 1px solid rgba(244,244,242,0.20); font-weight: 500; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;">View source</a>
     </div>
-    <div style="display: flex; align-items: flex-end; gap: 10px; height: 72px; margin-top: 16px;" aria-label="live waveform">
-      <div class="yapbar" style="width: 14px; height: 26px; border-radius: 7px; background: #F4F4F2; transform-origin: bottom; animation: yapbar 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0s infinite;"></div>
-      <div class="yapbar" style="width: 14px; height: 44px; border-radius: 7px; background: #F4F4F2; transform-origin: bottom; animation: yapbar 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.15s infinite;"></div>
-      <div class="yapbar" style="width: 14px; height: 68px; border-radius: 7px; background: #F4F4F2; transform-origin: bottom; animation: yapbar 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.05s infinite;"></div>
-      <div class="yapbar" style="width: 14px; height: 38px; border-radius: 7px; background: #F4F4F2; transform-origin: bottom; animation: yapbar 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.25s infinite;"></div>
-      <div class="yapbar" style="width: 14px; height: 56px; border-radius: 7px; background: #F4F4F2; transform-origin: bottom; animation: yapbar 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.1s infinite;"></div>
-      <div class="yapbar" style="width: 14px; height: 30px; border-radius: 7px; background: #F4F4F2; transform-origin: bottom; animation: yapbar 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.3s infinite;"></div>
-      <div class="yapbar" style="width: 14px; height: 48px; border-radius: 7px; background: #F4F4F2; transform-origin: bottom; animation: yapbar 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.2s infinite;"></div>
+    <div style="display: flex; align-items: center; gap: 5px; height: 96px; margin-top: 16px;" aria-label="live waveform">
+      <div class="yapbar" style="width: 7px; height: 16px; border-radius: 4px; background: #F4F4F2; transform-origin: center; animation: yapbar 0.9s ease-in-out 0s infinite;"></div>
+      <div class="yapbar" style="width: 7px; height: 36px; border-radius: 4px; background: #F4F4F2; transform-origin: center; animation: yapbar 0.7s ease-in-out 0.18s infinite;"></div>
+      <div class="yapbar" style="width: 7px; height: 60px; border-radius: 4px; background: #F4F4F2; transform-origin: center; animation: yapbar 0.8s ease-in-out 0.38s infinite;"></div>
+      <div class="yapbar" style="width: 7px; height: 28px; border-radius: 4px; background: #F4F4F2; transform-origin: center; animation: yapbar 0.65s ease-in-out 0.6s infinite;"></div>
+      <div class="yapbar" style="width: 7px; height: 44px; border-radius: 4px; background: #F4F4F2; transform-origin: center; animation: yapbar 0.85s ease-in-out 0.7s infinite;"></div>
+      <div class="yapbar" style="width: 7px; height: 12px; border-radius: 4px; background: #F4F4F2; transform-origin: center; animation: yapbar 0.75s ease-in-out 0.92s infinite;"></div>
     </div>
     <span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: #5C5C5A;">the logo dances above your Dock while you talk</span>
     <p style="margin: 0; font-size: 13px; color: #9B9B98;">MIT licensed &middot; zero telemetry &middot; no account, ever</p>
