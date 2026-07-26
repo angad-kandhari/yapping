@@ -13,7 +13,16 @@ struct Style: Codable, Identifiable, Equatable {
     /// Verbatim styles skip LLM cleanup entirely (terminals, editors).
     var verbatim: Bool = false
 
+    /// Dictating prompts to AI assistants: terse, technical, no fluff.
+    /// (Terminal-based agents are covered by the verbatim Code style.)
+    static let promptPreset = Style(
+        name: "Prompt",
+        appPatterns: ["com.anthropic.claudefordesktop", "com.openai.chat", "perplexity"],
+        prompt: "This is a prompt for an AI assistant. Keep it terse and imperative. Preserve technical tokens exactly: file paths, code identifiers, flags, URLs, version numbers. Remove filler but never soften or pad the request."
+    )
+
     static let defaults: [Style] = [
+        promptPreset,
         Style(
             name: "Casual",
             appPatterns: ["slack", "discord", "mobilesms", "messages", "whatsapp", "telegram"],

@@ -20,6 +20,11 @@ final class ConfigStore: ObservableObject {
 
     @Published var localeID: String { didSet { d.set(localeID, forKey: "localeID") } }
     @Published var cleanupEnabled: Bool { didSet { d.set(cleanupEnabled, forKey: "cleanupEnabled") } }
+    /// "apple" (on-device Foundation Models, zero setup), "ollama", "custom"
+    @Published var cleanupProvider: String { didSet { d.set(cleanupProvider, forKey: "cleanupProvider") } }
+    @Published var customBaseURL: String { didSet { d.set(customBaseURL, forKey: "customBaseURL") } }
+    @Published var customModel: String { didSet { d.set(customModel, forKey: "customModel") } }
+    @Published var customKey: String { didSet { d.set(customKey, forKey: "customKey") } }
     @Published var ollamaModel: String { didSet { d.set(ollamaModel, forKey: "ollamaModel") } }
     @Published var ollamaHost: String { didSet { d.set(ollamaHost, forKey: "ollamaHost") } }
     @Published var soundsEnabled: Bool { didSet { d.set(soundsEnabled, forKey: "soundsEnabled") } }
@@ -39,6 +44,10 @@ final class ConfigStore: ObservableObject {
     private init() {
         localeID = d.string(forKey: "localeID") ?? "en_US"
         cleanupEnabled = d.object(forKey: "cleanupEnabled") as? Bool ?? true
+        cleanupProvider = d.string(forKey: "cleanupProvider") ?? "apple"
+        customBaseURL = d.string(forKey: "customBaseURL") ?? ""
+        customModel = d.string(forKey: "customModel") ?? ""
+        customKey = d.string(forKey: "customKey") ?? ""
         ollamaModel = d.string(forKey: "ollamaModel") ?? "gemma3:4b"
         ollamaHost = d.string(forKey: "ollamaHost") ?? "http://localhost:11434"
         soundsEnabled = d.object(forKey: "soundsEnabled") as? Bool ?? true
@@ -49,7 +58,15 @@ final class ConfigStore: ObservableObject {
         dictionary = Self.loadJSON([String].self, key: "dictionary") ?? []
         replacements = Self.loadJSON([Replacement].self, key: "replacements") ?? []
         snippets = Self.loadJSON([Snippet].self, key: "snippets") ?? []
-        styles = Self.loadJSON([Style].self, key: "styles") ?? Style.defaults
+        var loadedStyles = Self.loadJSON([Style].self, key: "styles") ?? Style.defaults
+        // One-time seed of the Prompt style for existing installs
+        if !d.bool(forKey: "promptStyleSeeded") {
+            if !loadedStyles.contains(where: { $0.name == "Prompt" }) {
+                loadedStyles.append(Style.promptPreset)
+            }
+            d.set(true, forKey: "promptStyleSeeded")
+        }
+        styles = loadedStyles
         useFieldContext = d.object(forKey: "useFieldContext") as? Bool ?? true
         hudEnabled = d.object(forKey: "hudEnabled") as? Bool ?? false
     }

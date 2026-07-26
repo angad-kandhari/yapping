@@ -40,9 +40,25 @@ private struct GeneralSettings: View {
             }
             Section("Cleanup") {
                 Toggle("Clean up transcripts with a local model", isOn: $config.cleanupEnabled)
-                TextField("Ollama model", text: $config.ollamaModel)
-                TextField("Ollama host", text: $config.ollamaHost)
-                Text("If Ollama is unreachable, the raw transcript is used. Words are never lost.")
+                Picker("Provider", selection: $config.cleanupProvider) {
+                    Text("Apple Intelligence (built in)").tag("apple")
+                    Text("Ollama").tag("ollama")
+                    Text("Custom endpoint").tag("custom")
+                }
+                switch config.cleanupProvider {
+                case "ollama":
+                    TextField("Ollama model", text: $config.ollamaModel)
+                    TextField("Ollama host", text: $config.ollamaHost)
+                case "custom":
+                    TextField("Base URL (OpenAI compatible, e.g. http://localhost:1234/v1)",
+                              text: $config.customBaseURL)
+                    TextField("Model (optional)", text: $config.customModel)
+                    SecureField("API key (optional, stored locally)", text: $config.customKey)
+                default:
+                    Text("Apple's on-device model. Nothing to install; falls back to Ollama if Apple Intelligence is off.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Text("If the provider fails or over-edits, the raw transcript is used. Words are never lost.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Output") {

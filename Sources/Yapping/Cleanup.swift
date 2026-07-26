@@ -1,7 +1,13 @@
 import Foundation
+import FoundationModels
 
-/// Optional local LLM polish via Ollama. Falls back to the raw transcript on
-/// any failure or suspicious output; the user's words are never lost.
+/// Transcript polish via a local provider chain. Every path stays on this
+/// Mac unless the user explicitly points the custom endpoint elsewhere:
+/// - "apple": Apple's on-device Foundation Model (zero setup), falling
+///   back to Ollama if Apple Intelligence is unavailable
+/// - "ollama": local Ollama (the classic path)
+/// - "custom": any OpenAI-compatible endpoint (LM Studio and friends)
+/// All output passes the same guards; raw words always win on doubt.
 enum Cleanup {
     static var host: String { ConfigStore.shared.ollamaHost }
     static var model: String { ConfigStore.shared.ollamaModel }
@@ -20,11 +26,12 @@ enum Cleanup {
     - If the text is already clean, return it unchanged
     """
 
+    // MARK: - Public API
+
     static func polish(
         _ text: String, style: Style? = nil, fieldContext: String? = nil
     ) async -> String {
         guard ConfigStore.shared.cleanupEnabled else { return text }
-        guard await isUp() else { return text }
         var systemPrompt = prompt
         let words = ConfigStore.shared.dictionary
         if !words.isEmpty {
@@ -46,47 +53,18 @@ enum Cleanup {
             ---
             """
         }
-        let body: [String: Any] = [
-            "model": model,
-            "messages": [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": text],
-            ],
-            "stream": false,
-            "think": false,
-            "keep_alive": -1,
-            "options": ["temperature": 0.3, "num_predict": max(500, text.count / 2)],
-        ]
-        guard let url = URL(string: "\(host)/api/chat"),
-              let data = try? JSONSerialization.data(withJSONObject: body) else { return text }
-        var request = URLRequest(url: url, timeoutInterval: 45)
-        request.httpMethod = "POST"
-        request.httpBody = data
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        guard let (responseData, response) = try? await URLSession.shared.data(for: request),
-              (response as? HTTPURLResponse)?.statusCode == 200,
-              let json = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
-              let message = json["message"] as? [String: Any],
-              var cleaned = (message["content"] as? String)?
-                  .trimmingCharacters(in: .whitespacesAndNewlines)
-        else { return text }
-
-        // Reasoning models sometimes leak think tags; strip as a backstop
-        cleaned = cleaned.replacingOccurrences(
-            of: "<think>[\\s\\S]*?</think>", with: "", options: .regularExpression
-        ).trimmingCharacters(in: .whitespacesAndNewlines)
-        // No em dashes in output, ever (user preference)
-        cleaned = cleaned.replacingOccurrences(
-            of: "\\s*[\u{2014}\u{2013}]\\s*", with: ", ", options: .regularExpression
-        )
+        guard let raw = await chat(
+            system: systemPrompt, user: text,
+            maxTokens: max(500, text.count / 2)) else { return text }
+        let cleaned = sanitize(raw)
 
         // Cleanup only ever shortens or lightly edits. Much shorter means a
-        // summary or refusal; much longer means leaked chain-of-thought or
+        // summary or refusal; much longer means leaked reasoning or
         // commentary. Either way the raw words are safer.
-        let lower = Int(0.3 * Double(text.count))
-        let upper = Int(1.5 * Double(text.count)) + 40
-        guard !cleaned.isEmpty, cleaned.count >= lower, cleaned.count <= upper else {
+        guard !cleaned.isEmpty,
+              cleaned.count >= Int(0.3 * Double(text.count)),
+              cleaned.count <= Int(1.5 * Double(text.count)) + 40 else {
             return text
         }
         return cleaned
@@ -96,24 +74,93 @@ enum Cleanup {
     /// Returns nil on any failure so the caller can abort instead of
     /// destroying the selection.
     static func rewrite(selection: String, instruction: String) async -> String? {
-        guard await isUp() else { return nil }
         let systemPrompt = """
         You edit text. Apply the spoken instruction to the given text. \
         Return ONLY the edited text - no preamble, no quotes, no commentary. \
         Never use em dashes; use commas, periods, or parentheses instead. \
         Preserve everything the instruction does not ask you to change.
         """
+        guard let raw = await chat(
+            system: systemPrompt,
+            user: "Instruction: \(instruction)\n\nText:\n\(selection)",
+            maxTokens: max(600, selection.count)) else { return nil }
+        let edited = sanitize(raw)
+
+        // Edits can legitimately shorten or lengthen; guard only the absurd
+        guard !edited.isEmpty, edited.count <= selection.count * 4 + 400 else {
+            return nil
+        }
+        return edited
+    }
+
+    /// Ollama reachability (used by the setup assistant).
+    static func reachable() async -> Bool { await ollamaUp() }
+
+    /// Warm whichever provider is configured so the first polish is instant.
+    static func warmUp() async {
+        switch ConfigStore.shared.cleanupProvider {
+        case "apple":
+            if case .available = SystemLanguageModel.default.availability {
+                let session = LanguageModelSession(instructions: prompt)
+                session.prewarm()
+                NSLog("apple foundation model warm")
+                return
+            }
+            NSLog("apple intelligence unavailable; will fall back to ollama")
+            await warmOllama()
+        case "custom":
+            break  // nothing to warm; the endpoint manages its own models
+        default:
+            await warmOllama()
+        }
+    }
+
+    // MARK: - Provider chain
+
+    private static func chat(
+        system: String, user: String, maxTokens: Int
+    ) async -> String? {
+        switch ConfigStore.shared.cleanupProvider {
+        case "apple":
+            if let out = await appleChat(system: system, user: user) { return out }
+            // Apple Intelligence off or refused: try Ollama before giving up
+            return await ollamaChat(system: system, user: user, maxTokens: maxTokens)
+        case "custom":
+            return await openAIChat(system: system, user: user, maxTokens: maxTokens)
+        default:
+            return await ollamaChat(system: system, user: user, maxTokens: maxTokens)
+        }
+    }
+
+    private static func appleChat(system: String, user: String) async -> String? {
+        guard case .available = SystemLanguageModel.default.availability else {
+            return nil
+        }
+        do {
+            let session = LanguageModelSession(instructions: system)
+            let response = try await session.respond(to: user)
+            return response.content
+        } catch {
+            // Includes safety refusals; the guards and fallbacks handle it
+            NSLog("apple model cleanup failed: \(error)")
+            return nil
+        }
+    }
+
+    private static func ollamaChat(
+        system: String, user: String, maxTokens: Int
+    ) async -> String? {
+        guard await ollamaUp() else { return nil }
         let body: [String: Any] = [
             "model": model,
             "messages": [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": "Instruction: \(instruction)\n\nText:\n\(selection)"],
+                ["role": "system", "content": system],
+                ["role": "user", "content": user],
             ],
             "stream": false,
             "think": false,
             "keep_alive": -1,
-            "options": ["temperature": 0.3,
-                        "num_predict": max(600, selection.count)],
+            "options": ["temperature": 0.3, "num_predict": maxTokens],
         ]
         guard let url = URL(string: "\(host)/api/chat"),
               let data = try? JSONSerialization.data(withJSONObject: body) else { return nil }
@@ -126,28 +173,61 @@ enum Cleanup {
               (response as? HTTPURLResponse)?.statusCode == 200,
               let json = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
               let message = json["message"] as? [String: Any],
-              var edited = (message["content"] as? String)?
-                  .trimmingCharacters(in: .whitespacesAndNewlines)
-        else { return nil }
-
-        edited = edited.replacingOccurrences(
-            of: "<think>[\\s\\S]*?</think>", with: "", options: .regularExpression
-        ).trimmingCharacters(in: .whitespacesAndNewlines)
-        edited = edited.replacingOccurrences(
-            of: "\\s*[\u{2014}\u{2013}]\\s*", with: ", ", options: .regularExpression)
-
-        // Edits can legitimately shorten or lengthen; guard only the absurd
-        guard !edited.isEmpty, edited.count <= selection.count * 4 + 400 else {
-            return nil
-        }
-        return edited
+              let content = message["content"] as? String else { return nil }
+        return content
     }
 
-    /// Public reachability check (used by the setup assistant).
-    static func reachable() async -> Bool { await isUp() }
+    private static func openAIChat(
+        system: String, user: String, maxTokens: Int
+    ) async -> String? {
+        let config = ConfigStore.shared
+        let base = config.customBaseURL.trimmingCharacters(in: .whitespaces)
+        guard !base.isEmpty,
+              let url = URL(string: base.hasSuffix("/")
+                  ? base + "chat/completions"
+                  : base + "/chat/completions") else { return nil }
+        var body: [String: Any] = [
+            "messages": [
+                ["role": "system", "content": system],
+                ["role": "user", "content": user],
+            ],
+            "temperature": 0.3,
+            "max_tokens": maxTokens,
+        ]
+        if !config.customModel.isEmpty { body["model"] = config.customModel }
+        guard let data = try? JSONSerialization.data(withJSONObject: body) else { return nil }
+        var request = URLRequest(url: url, timeoutInterval: 45)
+        request.httpMethod = "POST"
+        request.httpBody = data
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !config.customKey.isEmpty {
+            request.setValue("Bearer \(config.customKey)", forHTTPHeaderField: "Authorization")
+        }
 
-    /// Fast health check so a stopped Ollama costs ~1s, not a long timeout.
-    private static func isUp() async -> Bool {
+        guard let (responseData, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let message = choices.first?["message"] as? [String: Any],
+              let content = message["content"] as? String else { return nil }
+        return content
+    }
+
+    // MARK: - Shared helpers
+
+    private static func sanitize(_ text: String) -> String {
+        var cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Reasoning models sometimes leak think tags; strip as a backstop
+        cleaned = cleaned.replacingOccurrences(
+            of: "<think>[\\s\\S]*?</think>", with: "", options: .regularExpression
+        ).trimmingCharacters(in: .whitespacesAndNewlines)
+        // No em dashes in output, ever (user preference)
+        cleaned = cleaned.replacingOccurrences(
+            of: "\\s*[\u{2014}\u{2013}]\\s*", with: ", ", options: .regularExpression)
+        return cleaned
+    }
+
+    private static func ollamaUp() async -> Bool {
         guard let url = URL(string: "\(host)/api/tags") else { return false }
         var request = URLRequest(url: url, timeoutInterval: 1.5)
         request.httpMethod = "GET"
@@ -155,9 +235,8 @@ enum Cleanup {
         return (result?.1 as? HTTPURLResponse)?.statusCode == 200
     }
 
-    /// Load the model into memory at startup so the first polish is instant.
-    static func warmUp() async {
-        guard await isUp() else {
+    private static func warmOllama() async {
+        guard await ollamaUp() else {
             NSLog("ollama not running; cleanup will fall back to raw transcripts")
             return
         }
