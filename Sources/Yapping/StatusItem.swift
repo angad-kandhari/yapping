@@ -55,11 +55,11 @@ final class StatusItem {
             entry.target = target
             menu.addItem(entry)
         }
-        add("History...", #selector(MenuTarget.history), "h")
-        add("Settings...", #selector(MenuTarget.settings), ",")
+        add("History", #selector(MenuTarget.history), "h")
+        add("Settings", #selector(MenuTarget.settings), ",")
         menu.addItem(.separator())
-        add("Setup Assistant...", #selector(MenuTarget.setup))
-        add("Check for Updates...", #selector(MenuTarget.updates))
+        add("Setup Assistant", #selector(MenuTarget.setup))
+        add("Check for Updates", #selector(MenuTarget.updates))
         menu.addItem(.separator())
         add("Quit Yapping", #selector(MenuTarget.quit), "q")
         item.menu = menu
