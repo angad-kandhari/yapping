@@ -1,0 +1,30 @@
+name: Bug report
+description: Something is broken
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Yapping version
+      placeholder: "1.0.2"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Anything in the logs?
+      description: Run "log show --last 10m --predicate 'process == \"yapping\"'" and paste anything relevant.
+      render: shell
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "26.3"

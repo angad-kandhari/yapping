@@ -1,0 +1,26 @@
+name: Feature request
+description: Tell us what yapping should learn to do
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What should yapping do?
+      description: Describe the feature and when you would use it.
+      placeholder: I want to hold the globe key and...
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: How do you handle this today?
+      placeholder: Currently I...
+  - type: dropdown
+    id: importance
+    attributes:
+      label: How much do you want this?
+      options:
+        - Nice to have
+        - Would use it daily
+        - I would switch tools for this
