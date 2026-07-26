@@ -18,8 +18,6 @@
   <a href="https://get-yapping.com"><b>get-yapping.com</b></a>
   &nbsp;&middot;&nbsp;
   <a href="https://github.com/angad-kandhari/yapping/releases/latest">Download</a>
-  &nbsp;&middot;&nbsp;
-  <a href="ROADMAP.md">Roadmap</a>
 </p>
 
 <p align="center">
@@ -82,7 +80,6 @@ System Settings > Keyboard > "Press globe key to" > Do Nothing.
 ## Project
 
 - Website: [get-yapping.com](https://get-yapping.com)
-- Plans: [ROADMAP.md](ROADMAP.md), grounded in market research rounds
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
 - License: [MIT](LICENSE)
 
