@@ -9,11 +9,6 @@ import Speech
 final class Transcriber {
     /// Per-buffer loudness (RMS), feeds the waveform animations.
     var onLevel: ((Float) -> Void)?
-    /// Finalized text chunks, fired progressively during the session.
-    var onFinal: ((String) -> Void)?
-    /// Volatile (tentative) text, replaced wholesale as recognition refines.
-    /// Only fires when the session runs with volatile results enabled.
-    var onVolatile: ((String) -> Void)?
 
     private var locale: Locale { Locale(identifier: ConfigStore.shared.localeID) }
     private let engine = AVAudioEngine()
@@ -25,18 +20,10 @@ final class Transcriber {
     private var analyzerFormat: AVAudioFormat?
 
     private func makeModule() -> SpeechTranscriber {
-        // Live modes want responsiveness; volatile guesses only when the
-        // maximum-liveness mode will actually type them
-        let reporting: Set<SpeechTranscriber.ReportingOption>
-        switch ConfigStore.shared.insertionMode {
-        case "liveVolatile": reporting = [.volatileResults, .fastResults]
-        case "liveFinal": reporting = [.fastResults]
-        default: reporting = []
-        }
-        return SpeechTranscriber(
+        SpeechTranscriber(
             locale: locale,
             transcriptionOptions: [],
-            reportingOptions: reporting,
+            reportingOptions: [],
             attributeOptions: []
         )
     }
@@ -79,16 +66,10 @@ final class Transcriber {
             }
         }
 
-        resultsTask = Task { [weak self] in
+        resultsTask = Task {
             var text = ""
-            for try await result in module.results {
-                let chunk = String(result.text.characters)
-                if result.isFinal {
-                    text += chunk
-                    self?.onFinal?(chunk)
-                } else {
-                    self?.onVolatile?(chunk)
-                }
+            for try await result in module.results where result.isFinal {
+                text += String(result.text.characters)
             }
             return text
         }
