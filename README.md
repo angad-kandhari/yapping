@@ -25,7 +25,7 @@
   <img src="https://img.shields.io/badge/Swift-6-F05138" alt="Swift 6">
   <img src="https://img.shields.io/badge/processing-100%25%20local-2ea44f" alt="100% local">
   <img src="https://img.shields.io/github/v/release/angad-kandhari/yapping" alt="latest release">
-  <img src="https://img.shields.io/github/license/angad-kandhari/yapping" alt="MIT">
+  <img src="https://img.shields.io/github/license/angad-kandhari/yapping" alt="Apache 2.0">
 </p>
 
 ---
@@ -81,7 +81,7 @@ System Settings > Keyboard > "Press globe key to" > Do Nothing.
 
 - Website: [get-yapping.com](https://get-yapping.com)
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
-- License: [MIT](LICENSE)
+- License: [Apache 2.0](LICENSE)
 
 Built with SwiftPM and a Makefile. No Xcode project, no dependencies,
 one small binary.
