@@ -188,6 +188,9 @@ private struct StylesSettings: View {
 private struct AboutSettings: View {
     var body: some View {
         VStack(spacing: 12) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 96, height: 96)
             Text("yapping").font(.system(size: 28, weight: .bold))
             Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev")")
                 .foregroundStyle(.secondary)
