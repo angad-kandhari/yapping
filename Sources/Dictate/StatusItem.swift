@@ -1,34 +1,38 @@
 import AppKit
 
-/// Menu bar indicator: mic icon when idle, a live waveform while recording,
-/// an hourglass while transcribing.
+/// Menu bar indicator built around the dictate logo (five rounded bars).
+///
+/// The bars are drawn programmatically so the logo itself can animate:
+/// - idle: the logo at its natural rest heights
+/// - recording: bar heights driven by live mic levels, eased between frames
+/// - processing: the logo dimmed while transcription finishes
 final class StatusItem {
     enum State {
         case idle, recording, processing
     }
 
-    private static let blocks: [Character] = ["\u{2581}", "\u{2582}", "\u{2583}", "\u{2584}",
-                                              "\u{2585}", "\u{2586}", "\u{2587}", "\u{2588}"]
-    /// RMS to bar index scaling: normal speech RMS is roughly 0.01-0.1.
+    // Logo geometry from icon-pack/menubar/dictate-menubar.svg (24-grid:
+    // bars at x 4/8/12/16/20, heights 4/10/16/10/4, stroke 2, round caps),
+    // scaled 0.75x into an 18 pt menu bar canvas.
+    private static let canvas: CGFloat = 18
+    private static let barWidth: CGFloat = 1.5
+    private static let barCenters: [CGFloat] = [3, 6, 9, 12, 15]
+    private static let restHeights: [CGFloat] = [3, 7.5, 12, 7.5, 3]
+    private static let minHeight: CGFloat = 3
+    private static let maxHeight: CGFloat = 16
+    /// RMS to height scaling: normal speech RMS is roughly 0.01-0.1.
     private static let gain: Float = 80
 
     private let item: NSStatusItem
     private let statusLine = NSMenuItem(title: "Hold \u{1F310} (fn) to talk", action: nil, keyEquivalent: "")
-    private var levels: [Float] = Array(repeating: 0, count: 8)
     private var state: State = .idle
+    private var levels: [Float] = Array(repeating: 0, count: 5)
+    private var displayed: [CGFloat] = StatusItem.restHeights
+    private var settled = false
     private var timer: Timer?
-
-    /// Template glyph from the icon pack; adapts to light/dark menu bars.
-    /// Falls back to an emoji when running outside the app bundle.
-    private let glyph: NSImage? = {
-        guard let image = Bundle.main.image(forResource: "dictateTemplate") else { return nil }
-        image.isTemplate = true
-        return image
-    }()
 
     init(onQuit: @escaping () -> Void) {
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        showGlyph()
 
         let menu = NSMenu()
         statusLine.isEnabled = false
@@ -41,13 +45,15 @@ final class StatusItem {
         menu.addItem(quit)
         item.menu = menu
 
-        // Redraws the waveform while recording; no-op the rest of the time
-        timer = Timer.scheduledTimer(withTimeInterval: 0.12, repeats: true) { [weak self] _ in
+        redraw()
+        // 20 fps while animating; skips work once the logo settles at rest
+        timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             self?.tick()
         }
     }
 
-    /// Thread-safe: called from the audio tap thread.
+    /// Thread-safe: called from the audio tap thread. Newest level enters on
+    /// the right and scrolls left through the logo's bars.
     func pushLevel(_ level: Float) {
         DispatchQueue.main.async {
             self.levels.removeFirst()
@@ -58,39 +64,69 @@ final class StatusItem {
     func setState(_ state: State) {
         DispatchQueue.main.async {
             self.state = state
+            self.settled = false
             switch state {
             case .idle:
-                self.showGlyph()
                 self.statusLine.title = "Hold \u{1F310} (fn) to talk"
             case .recording:
-                self.levels = Array(repeating: 0, count: 8)
-                self.item.button?.image = nil
+                self.levels = Array(repeating: 0, count: 5)
                 self.statusLine.title = "Listening..."
             case .processing:
-                self.item.button?.image = nil
-                self.item.button?.title = "\u{23F3}"
                 self.statusLine.title = "Transcribing..."
             }
         }
     }
 
-    private func showGlyph() {
-        if let glyph {
-            item.button?.title = ""
-            item.button?.image = glyph
+    private func tick() {
+        if state != .recording && settled { return }
+
+        let targets: [CGFloat]
+        if state == .recording {
+            targets = levels.map { level in
+                let t = CGFloat(min(1, level * Self.gain))
+                return Self.minHeight + (Self.maxHeight - Self.minHeight) * t
+            }
         } else {
-            item.button?.image = nil
-            item.button?.title = "\u{1F399}\u{FE0F}"
+            targets = Self.restHeights
         }
+
+        // Ease toward targets: fast enough to feel live, slow enough to flow
+        var maxDelta: CGFloat = 0
+        for i in 0..<displayed.count {
+            let delta = targets[i] - displayed[i]
+            displayed[i] += delta * 0.45
+            maxDelta = max(maxDelta, abs(delta))
+        }
+        if state != .recording && maxDelta < 0.05 {
+            displayed = targets
+            settled = true
+        }
+        redraw()
     }
 
-    private func tick() {
-        guard state == .recording else { return }
-        let wave = String(levels.map { level -> Character in
-            let index = min(Self.blocks.count - 1, Int(level * Self.gain))
-            return Self.blocks[max(0, index)]
-        })
-        item.button?.title = wave
+    private func redraw() {
+        let heights = displayed
+        let alpha: CGFloat = state == .processing ? 0.4 : 1.0
+        let size = NSSize(width: Self.canvas, height: Self.canvas)
+        let image = NSImage(size: size, flipped: false) { _ in
+            NSColor.black.withAlphaComponent(alpha).setFill()
+            for (i, cx) in Self.barCenters.enumerated() {
+                let h = heights[i]
+                let rect = NSRect(
+                    x: cx - Self.barWidth / 2,
+                    y: (Self.canvas - h) / 2,
+                    width: Self.barWidth,
+                    height: h
+                )
+                NSBezierPath(roundedRect: rect, xRadius: Self.barWidth / 2,
+                             yRadius: Self.barWidth / 2).fill()
+            }
+            return true
+        }
+        // Template rendering: macOS tints it for light/dark menu bars
+        image.isTemplate = true
+        item.button?.image = image
+        item.button?.title = ""
     }
 }
 
