@@ -25,6 +25,8 @@ final class ConfigStore: ObservableObject {
     @Published var soundsEnabled: Bool { didSet { d.set(soundsEnabled, forKey: "soundsEnabled") } }
     @Published var copyInsteadOfPaste: Bool { didSet { d.set(copyInsteadOfPaste, forKey: "copyInsteadOfPaste") } }
     @Published var trailingSpace: Bool { didSet { d.set(trailingSpace, forKey: "trailingSpace") } }
+    @Published var handsFreeAutoStop: Bool { didSet { d.set(handsFreeAutoStop, forKey: "handsFreeAutoStop") } }
+    @Published var sendCommand: Bool { didSet { d.set(sendCommand, forKey: "sendCommand") } }
     @Published var dictionary: [String] { didSet { saveJSON(dictionary, key: "dictionary") } }
     @Published var replacements: [Replacement] { didSet { saveJSON(replacements, key: "replacements") } }
     @Published var snippets: [Snippet] { didSet { saveJSON(snippets, key: "snippets") } }
@@ -42,6 +44,8 @@ final class ConfigStore: ObservableObject {
         soundsEnabled = d.object(forKey: "soundsEnabled") as? Bool ?? true
         copyInsteadOfPaste = d.object(forKey: "copyInsteadOfPaste") as? Bool ?? false
         trailingSpace = d.object(forKey: "trailingSpace") as? Bool ?? true
+        handsFreeAutoStop = d.object(forKey: "handsFreeAutoStop") as? Bool ?? false
+        sendCommand = d.object(forKey: "sendCommand") as? Bool ?? true
         dictionary = Self.loadJSON([String].self, key: "dictionary") ?? []
         replacements = Self.loadJSON([Replacement].self, key: "replacements") ?? []
         snippets = Self.loadJSON([Snippet].self, key: "snippets") ?? []

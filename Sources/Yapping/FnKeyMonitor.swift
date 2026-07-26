@@ -16,6 +16,8 @@ final class FnKeyMonitor {
     var onPress: (() -> Void)?
     var onRelease: (() -> Void)?
     var onCancel: (() -> Void)?
+    /// Esc pressed while fn is NOT held; used to end hands-free sessions.
+    var onEscape: (() -> Void)?
 
     private static let fnKeycode: Int64 = 63  // kVK_Function
     private var held = false
@@ -99,6 +101,9 @@ final class FnKeyMonitor {
                 // (fn+arrow = page up, ...), not a hold. Both cancel.
                 combo = true
                 onCancel?()
+            } else if !held,
+                      event.getIntegerValueField(.keyboardEventKeycode) == 53 {
+                onEscape?()
             }
         default:
             break

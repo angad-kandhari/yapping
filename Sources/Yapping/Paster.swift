@@ -15,6 +15,15 @@ enum Paster {
         pasteboard.setString(text, forType: .string)
     }
 
+    /// The "send it" voice command: a synthetic Return press.
+    static func pressReturn() {
+        let source = CGEventSource(stateID: .combinedSessionState)
+        let down = CGEvent(keyboardEventSource: source, virtualKey: 36, keyDown: true)
+        let up = CGEvent(keyboardEventSource: source, virtualKey: 36, keyDown: false)
+        down?.post(tap: .cghidEventTap)
+        up?.post(tap: .cghidEventTap)
+    }
+
     static func paste(_ text: String) {
         let pasteboard = NSPasteboard.general
         let previous = pasteboard.string(forType: .string)

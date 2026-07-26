@@ -44,6 +44,8 @@ telemetry, no word limits.
 ## Features
 
 - Hold-to-talk on the Globe key, with accidental-tap and fn-shortcut detection
+- Hands-free: double-tap the Globe key to talk without holding; tap, Esc, or (optionally) silence finishes
+- Say "send it" at the end and the message sends with zero keypresses
 - Live animated waveform in the menu bar (the logo is the meter)
 - Personal dictionary: bias recognition toward your names, jargon, and acronyms
 - Replacements and snippets: say "my email", get the address

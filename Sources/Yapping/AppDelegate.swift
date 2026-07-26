@@ -26,6 +26,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var axSnapshot: Task<(String?, String?), Never>?
     private let hud = WaveformHUD()
 
+    // Hands-free (double-tap) session state
+    private var handsFree = false
+    private var pendingTapTimer: Timer?
+    private var ignoreNextRelease = false
+    private var lastVoiceAt = Date.distantPast
+
     /// Holds shorter than this are accidental taps; discard them.
     private let minHold: TimeInterval = 0.35
     /// Safety stop for a stuck key.
@@ -71,6 +77,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         transcriber.onLevel = { [weak self] level in
             self?.statusItem.pushLevel(level)
             self?.hud.pushLevel(level)
+            self?.voiceActivity(level)
+        }
+        fnMonitor.onEscape = { [weak self] in
+            DispatchQueue.main.async {
+                guard let self, self.handsFree else { return }
+                self.cancelled = true
+                self.endSession(cancelled: true)
+            }
         }
         requestPermissions()
 
@@ -93,6 +107,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         UpdateCheck.quietCheck()
     }
 
+    /// Silence auto-stop for hands-free sessions (opt-in): about 2.5s of
+    /// quiet after at least 4s of recording ends the session.
+    private func voiceActivity(_ level: Float) {
+        DispatchQueue.main.async {
+            guard self.handsFree, ConfigStore.shared.handsFreeAutoStop else { return }
+            if level > 0.012 {
+                self.lastVoiceAt = Date()
+            } else if Date().timeIntervalSince(self.lastVoiceAt) > 2.5,
+                      Date().timeIntervalSince(self.pressedAt) > 4 {
+                self.endSession(cancelled: false)
+            }
+        }
+    }
+
+    /// "... send it" at the end of a dictation strips the phrase and asks
+    /// for a Return press after pasting.
+    static func stripSendCommand(from text: String) -> String? {
+        let pattern = "[\\s,.!?]*send it[\\s.!?]*$"
+        guard let range = text.range(
+            of: pattern, options: [.regularExpression, .caseInsensitive]) else {
+            return nil
+        }
+        let stripped = String(text[..<range.lowerBound])
+        return stripped.isEmpty ? nil : stripped
+    }
+
     private func requestPermissions() {
         // Microphone prompt up front, not mid-first-dictation
         AVCaptureDevice.requestAccess(for: .audio) { granted in
@@ -108,6 +148,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func fnPressed() {
+        // Second tap within the grace window: upgrade the running session
+        // to hands-free instead of discarding it
+        if pendingTapTimer != nil {
+            pendingTapTimer?.invalidate()
+            pendingTapTimer = nil
+            handsFree = true
+            ignoreNextRelease = true
+            lastVoiceAt = Date()
+            statusItem.setState(.recording, detail: "hands-free")
+            Sound.play("Hero")
+            return
+        }
+        // A tap while hands-free ends the session normally
+        if handsFree {
+            ignoreNextRelease = true
+            endSession(cancelled: false)
+            return
+        }
         guard !busy else { return }
         busy = true
         cancelled = false
@@ -144,19 +202,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Sound.play("Pop")
 
         maxTimer = Timer.scheduledTimer(withTimeInterval: maxHold, repeats: false) { [weak self] _ in
-            self?.fnReleased()
+            guard let self else { return }
+            self.ignoreNextRelease = true
+            self.endSession(cancelled: false)
         }
     }
 
     private func fnReleased() {
+        if ignoreNextRelease {
+            ignoreNextRelease = false
+            return
+        }
+        guard busy, !handsFree else { return }
+
+        if Date().timeIntervalSince(pressedAt) < minHold {
+            // Might be the first tap of a double-tap: keep recording for a
+            // grace beat before discarding
+            pendingTapTimer = Timer.scheduledTimer(
+                withTimeInterval: 0.45, repeats: false
+            ) { [weak self] _ in
+                guard let self else { return }
+                self.pendingTapTimer = nil
+                self.cancelled = true
+                self.endSession(cancelled: true)
+            }
+            return
+        }
+        endSession(cancelled: cancelled)
+    }
+
+    /// Ends the current session (hold release, hands-free stop, Esc, or
+    /// max-duration) and runs the pipeline unless cancelled.
+    private func endSession(cancelled wasCancelled: Bool) {
         guard busy else { return }
         maxTimer?.invalidate()
         maxTimer = nil
-        if Date().timeIntervalSince(pressedAt) < minHold {
-            cancelled = true
-        }
+        pendingTapTimer?.invalidate()
+        pendingTapTimer = nil
+        handsFree = false
 
-        let wasCancelled = cancelled
         hud.hide()
         statusItem.setState(wasCancelled ? .idle : .processing)
         if !wasCancelled { Sound.play("Tink") }
@@ -184,7 +268,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 let (selection, fieldContext) = await self.axSnapshot?.value ?? (nil, nil)
 
-                let output: String
+                var output: String
                 if let selection, !selection.isEmpty {
                     // Voice edit: the spoken words are an instruction applied
                     // to the selected text; pasting replaces the selection
@@ -218,12 +302,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // (not for edits, which replace the selection exactly)
                 let isEdit = selection?.isEmpty == false
                 let config = ConfigStore.shared
+
+                // "send it" ends the dictation with a Return press
+                var sendIt = false
+                if config.sendCommand, !isEdit, self.activeStyle?.verbatim != true,
+                   let stripped = Self.stripSendCommand(from: output) {
+                    output = stripped
+                    sendIt = true
+                }
+
                 let final = (isEdit || !config.trailingSpace) ? output : output + " "
                 if config.copyInsteadOfPaste && !isEdit {
                     Paster.copyOnly(output)
                     Self.notify("Copied", body: "Your dictation is on the clipboard.")
                 } else {
                     Paster.paste(final)
+                    if sendIt {
+                        try? await Task.sleep(for: .milliseconds(160))
+                        Paster.pressReturn()
+                    }
                 }
                 HistoryStore.shared.add(
                     raw: text, cleaned: output,

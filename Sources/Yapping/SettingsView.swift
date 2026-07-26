@@ -48,6 +48,14 @@ private struct GeneralSettings: View {
             Section("Output") {
                 Toggle("Copy to clipboard instead of pasting", isOn: $config.copyInsteadOfPaste)
                 Toggle("Trailing space after each dictation", isOn: $config.trailingSpace)
+                Toggle("\"Send it\" presses Return", isOn: $config.sendCommand)
+                Text("End a dictation with \"send it\" and the message goes out with zero keypresses. Skipped in verbatim styles.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Hands-free") {
+                Toggle("Silence ends hands-free dictation", isOn: $config.handsFreeAutoStop)
+                Text("Double-tap \u{1F310} to talk without holding; tap again or press Esc to finish. With this on, about 2.5 seconds of quiet also finishes.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section("Behavior") {
                 Toggle("Sounds", isOn: $config.soundsEnabled)
