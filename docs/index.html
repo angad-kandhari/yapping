@@ -6,277 +6,298 @@
 <title>yapping - private, on-device dictation for macOS</title>
 <meta name="description" content="Hold the globe key. Yap. Done. Free, open source, on-device dictation for macOS. No cloud, no subscription, no word limits.">
 <meta property="og:title" content="yapping">
-<meta property="og:description" content="Private, on-device dictation for macOS. Hold the globe key. Yap. Done.">
+<meta property="og:description" content="Private, on-device dictation for macOS. Hold. Yap. Done.">
 <meta property="og:image" content="https://angad-kandhari.github.io/yapping/assets/yapping-icon-1024.png">
 <link rel="icon" href="assets/yapping-icon-1024.png">
 <style>
-  :root {
-    --bg: #0b0b0f; --bg2: #101016; --surface: #16161d; --line: #23232c;
-    --yellow: #FF5A1F; --text: #f4f4f6; --muted: #9a9aa6; --dim: #6a6a76;
+  @font-face { font-family: 'Geist'; font-weight: 500; src: url('fonts/Geist-500.woff2') format('woff2'); font-display: swap; }
+  @font-face { font-family: 'Geist'; font-weight: 700; src: url('fonts/Geist-700.woff2') format('woff2'); font-display: swap; }
+  @font-face { font-family: 'Geist'; font-weight: 900; src: url('fonts/Geist-900.woff2') format('woff2'); font-display: swap; }
+  @font-face { font-family: 'Geist Mono'; font-weight: 500; src: url('fonts/GeistMono-500.woff2') format('woff2'); font-display: swap; }
+
+  :root { --yap-accent: #FF5A1F; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #0E0E0E; color: #F4F4F2; font-family: 'Geist', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: #F4F4F2; text-decoration: none; transition: opacity 160ms ease; }
+  a:hover { opacity: 0.7; }
+  .btn-solid { background: #F4F4F2; color: #0E0E0E; border-radius: 999px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 4px 14px rgba(0,0,0,0.30); }
+  .btn-solid:hover { background: #FFFFFF; opacity: 1; }
+  .card { background: #1A1A19; border-radius: 16px; box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px rgba(0,0,0,0.35); transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1); }
+  .card:hover { transform: translateY(-2px); }
+  @keyframes yapbar { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+  @keyframes yapmarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+  details .yap-x { transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1); }
+  details[open] .yap-x { transform: rotate(45deg); }
+  @media (prefers-reduced-motion: reduce) {
+    .yapbar, .yapmarquee { animation-play-state: paused !important; }
   }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body { background: var(--bg); color: var(--text); font-family: -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif; line-height: 1.6; -webkit-font-smoothing: antialiased; }
-  a { color: inherit; }
-  .container { max-width: 1060px; margin: 0 auto; padding: 0 24px; }
-
-  /* Nav */
-  nav { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(16px); background: rgba(11,11,15,.72); border-bottom: 1px solid var(--line); }
-  .nav-inner { display: flex; align-items: center; gap: 28px; height: 64px; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; text-decoration: none; }
-  .navlinks { display: flex; gap: 22px; margin-left: auto; align-items: center; }
-  .navlinks a { color: var(--muted); text-decoration: none; font-size: 14.5px; }
-  .navlinks a:hover { color: var(--text); }
-  .gh-mark { display: inline-flex; align-items: center; color: var(--muted); transition: color .15s ease, transform .15s ease; }
-  .gh-mark:hover { color: var(--text); transform: translateY(-1px); }
-  .gh-mark svg { display: block; }
-  .btn { display: inline-block; background: var(--yellow); color: #000; font-weight: 700; padding: 10px 20px; border-radius: 999px; text-decoration: none; font-size: 14.5px; transition: transform .15s ease; }
-  .btn:hover { transform: translateY(-1px); }
-  .btn.big { padding: 15px 30px; font-size: 16px; }
-  .ghost { display: inline-block; color: var(--text); border: 1px solid var(--line); padding: 15px 30px; border-radius: 999px; text-decoration: none; font-size: 16px; }
-  .ghost:hover { border-color: var(--dim); }
-
-  /* Waveform mark */
-  .bars { display: inline-flex; gap: 3px; align-items: center; height: 18px; }
-  .bars i { width: 3px; background: var(--yellow); border-radius: 2px; display: block; }
-  .bars i:nth-child(1){height:5px} .bars i:nth-child(2){height:11px} .bars i:nth-child(3){height:18px}
-  .bars i:nth-child(4){height:8px} .bars i:nth-child(5){height:13px} .bars i:nth-child(6){height:4px}
-
-  /* Hero */
-  .hero { text-align: center; padding: 96px 0 48px; }
-  .pillbadge { display: inline-flex; gap: 8px; align-items: center; border: 1px solid var(--line); color: var(--muted); padding: 6px 14px; border-radius: 999px; font-size: 13px; margin-bottom: 28px; }
-  .pillbadge b { color: var(--yellow); font-weight: 600; }
-  h1 { font-size: clamp(40px, 7vw, 72px); line-height: 1.05; letter-spacing: -.02em; font-weight: 800; }
-  h1 .y { color: var(--yellow); }
-  .sub { color: var(--muted); font-size: clamp(17px, 2.4vw, 21px); max-width: 640px; margin: 22px auto 34px; }
-  kbd.fn { display: inline-block; background: #1c1c24; border: 1px solid #2e2e3a; border-bottom-width: 3px; border-radius: 9px; padding: 2px 12px; font-family: inherit; font-size: .8em; vertical-align: middle; }
-
-  /* Demo */
-  .demo { margin: 64px auto 0; max-width: 680px; }
-  .demo-screen { background: linear-gradient(180deg, #14141b, #0e0e13); border: 1px solid var(--line); border-radius: 20px; padding: 40px 36px 30px; }
-  .typeline { font-size: 19px; text-align: left; min-height: 60px; color: var(--text); }
-  .typeline .caret { display: inline-block; width: 2px; height: 1.15em; background: var(--yellow); vertical-align: text-bottom; animation: blink 1s steps(1) infinite; }
-  @keyframes blink { 50% { opacity: 0; } }
-  .dockpill { margin: 30px auto 0; width: 200px; height: 42px; background: rgba(255,255,255,.07); border: 1px solid var(--line); border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 6px; }
-  .dockpill i { width: 5px; background: #fff; border-radius: 3px; animation: dance 1.05s ease-in-out infinite; }
-  .dockpill i:nth-child(1){height:8px; animation-delay:0s} .dockpill i:nth-child(2){height:16px; animation-delay:.14s}
-  .dockpill i:nth-child(3){height:26px; animation-delay:.28s} .dockpill i:nth-child(4){height:12px; animation-delay:.42s}
-  .dockpill i:nth-child(5){height:20px; animation-delay:.56s} .dockpill i:nth-child(6){height:7px; animation-delay:.7s}
-  @keyframes dance { 0%,100% { transform: scaleY(1);} 50% { transform: scaleY(1.55);} }
-  .demo-hint { color: var(--dim); font-size: 13px; margin-top: 14px; }
-
-  /* Sections */
-  section { padding: 88px 0; }
-  .kicker { color: var(--yellow); font-weight: 700; font-size: 13.5px; text-transform: lowercase; letter-spacing: .06em; }
-  h2 { font-size: clamp(28px, 4.5vw, 42px); letter-spacing: -.01em; margin: 10px 0 14px; }
-  .lead { color: var(--muted); max-width: 620px; font-size: 17px; }
-
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 44px; }
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 26px; }
-  .card h3 { font-size: 17px; margin: 14px 0 6px; }
-  .card p { color: var(--muted); font-size: 14.5px; }
-  .glyph { width: 40px; height: 40px; border-radius: 10px; background: #1e1e27; display: flex; align-items: center; justify-content: center; font-size: 19px; }
-
-  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 44px; counter-reset: step; }
-  .step { border-top: 2px solid var(--yellow); padding-top: 18px; }
-  .step::before { counter-increment: step; content: "0" counter(step); color: var(--dim); font-weight: 800; font-size: 14px; }
-  .step h3 { font-size: 18px; margin: 6px 0; }
-  .step p { color: var(--muted); font-size: 14.5px; }
-
-  /* Privacy */
-  .privacy { background: var(--bg2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: center; }
-  .bigline { font-size: clamp(26px, 4.5vw, 44px); font-weight: 800; letter-spacing: -.01em; max-width: 760px; margin: 0 auto; }
-  .bigline .y { color: var(--yellow); }
-  .netlist { color: var(--muted); margin-top: 22px; font-size: 16px; }
-
-  /* Compare */
-  table { width: 100%; border-collapse: collapse; margin-top: 40px; font-size: 15px; }
-  th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--line); }
-  th { color: var(--dim); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; }
-  td:first-child { color: var(--muted); }
-  .yes { color: var(--yellow); font-weight: 700; }
-  .meh { color: var(--dim); }
-  .tablewrap { overflow-x: auto; }
-
-  /* FAQ */
-  details { border-bottom: 1px solid var(--line); padding: 18px 4px; }
-  details summary { cursor: pointer; font-weight: 600; font-size: 16.5px; list-style: none; display: flex; justify-content: space-between; }
-  details summary::after { content: "+"; color: var(--yellow); font-weight: 700; }
-  details[open] summary::after { content: "\2212"; }
-  details p { color: var(--muted); margin-top: 10px; font-size: 15px; max-width: 720px; }
-
-  /* Install */
-  pre { background: #000; border: 1px solid var(--line); border-radius: 14px; padding: 20px 24px; overflow-x: auto; font-size: 14.5px; line-height: 1.8; margin-top: 30px; }
-  code { color: var(--yellow); font-family: "SF Mono", ui-monospace, monospace; }
-
-  /* CTA + footer */
-  .cta { text-align: center; }
-  footer { border-top: 1px solid var(--line); padding: 36px 0; color: var(--dim); font-size: 13.5px; }
-  .foot { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  .foot a { color: var(--muted); text-decoration: none; }
-  .foot .spacer { margin-left: auto; }
-
-  /* Reveal on scroll */
-  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
-  .reveal.in { opacity: 1; transform: none; }
+  @media (max-width: 760px) {
+    .navlinks a:not(.keep) { display: none; }
+    nav, header, section, footer { padding-left: 24px !important; padding-right: 24px !important; }
+  }
 </style>
 </head>
 <body>
+<div style="background: #0E0E0E; min-height: 100vh;">
+  <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
+    <defs>
+      <path id="lsq" d="M512 0C289.53 0 172.55 0 89.06 45.53A360 360 0 0 0 45.53 89.06C0 172.55 0 289.53 0 512s0 339.45 45.53 422.94a360 360 0 0 0 43.53 43.53C172.55 1024 289.53 1024 512 1024s339.45 0 422.94-45.53a360 360 0 0 0 43.53-43.53C1024 851.45 1024 734.47 1024 512s0-339.45-45.53-422.94a360 360 0 0 0-43.53-43.53C851.45 0 734.47 0 512 0z"/>
+      <clipPath id="lsqc"><use href="#lsq"></use></clipPath>
+      <symbol id="lic" viewBox="0 0 1024 1024">
+        <g clip-path="url(#lsqc)">
+          <use href="#lsq" fill="#0E0E0E"/>
+          <g fill="#F4F4F2">
+            <rect x="162" y="422" width="70" height="180" rx="35"/>
+            <rect x="278" y="332" width="70" height="360" rx="35"/>
+            <rect x="394" y="242" width="70" height="540" rx="35"/>
+            <rect x="510" y="372" width="70" height="280" rx="35"/>
+            <rect x="626" y="302" width="70" height="420" rx="35"/>
+            <rect x="742" y="432" width="70" height="160" rx="35"/>
+          </g>
+          <g transform="rotate(-12 700 300)">
+            <rect x="560" y="240" width="280" height="118" rx="59" fill="var(--yap-accent, #FF5A1F)"/>
+            <text x="700" y="322" text-anchor="middle" font-family="Geist, sans-serif" font-weight="700" font-size="64" letter-spacing="3.8" fill="#0E0E0E">YAP</text>
+          </g>
+        </g>
+      </symbol>
+    </defs>
+  </svg>
 
-<nav>
-  <div class="container nav-inner">
-    <a class="brand" href="#">
-      <span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-      yapping
-    </a>
-    <div class="navlinks">
-      <a href="#features">Features</a>
-      <a href="#how">How it works</a>
-      <a href="#privacy">Privacy</a>
-      <a href="#compare">Compare</a>
-      <a href="#faq">FAQ</a>
-      <a class="gh-mark" href="https://github.com/angad729/yapping" aria-label="yapping on GitHub">
-        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-      </a>
+  <nav style="position: sticky; top: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; padding: 20px 48px; background: rgba(14,14,14,0.85); backdrop-filter: blur(8px) saturate(140%); border-bottom: 1px solid rgba(244,244,242,0.10);">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <svg width="30" height="30"><use href="#lic"></use></svg>
+      <span style="font-size: 18px; font-weight: 700; letter-spacing: -0.01em;">yapping</span>
+      <span style="font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: #9B9B98; margin-left: 4px;">free + open source</span>
     </div>
-    <a class="btn" href="https://github.com/angad729/yapping/releases/latest">Download</a>
+    <div class="navlinks" style="display: flex; align-items: center; gap: 28px; font-size: 14px;">
+      <a href="#features">features</a>
+      <a href="#privacy">privacy</a>
+      <a href="#faq">faq</a>
+      <a href="https://github.com/angad729/yapping" style="font-family: 'Geist Mono', monospace; font-size: 13px;">github &#8599;</a>
+      <a class="btn-solid keep" href="https://github.com/angad729/yapping/releases/latest" style="padding: 9px 20px; font-size: 13px;">Download</a>
+    </div>
+  </nav>
+
+  <header style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 96px 48px 64px; gap: 32px;">
+    <div style="display: flex; align-items: center; gap: 10px; font-family: 'Geist Mono', monospace; font-size: 13px; color: #9B9B98;">
+      <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 40px; padding: 0 10px; border: 1px solid rgba(244,244,242,0.20); border-radius: 8px; color: #F4F4F2; box-shadow: 0 2px 0 rgba(244,244,242,0.10);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="margin-right: 6px;"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21M12 3c-2.5 2.6-3.8 5.7-3.8 9s1.3 6.4 3.8 9"/></svg>
+        fn
+      </span>
+      <span>hold it. that's the whole manual.</span>
+    </div>
+    <h1 style="margin: 0; font-weight: 900; font-size: clamp(64px, 11vw, 168px); line-height: 0.92; letter-spacing: -0.02em; text-transform: uppercase;">
+      Hold.<br>Yap. <span style="color: var(--yap-accent);">Done.</span>
+    </h1>
+    <p style="margin: 0; max-width: 520px; font-size: 16px; line-height: 1.45; color: #9B9B98;">Private, on-device dictation for macOS. Your voice becomes clean text at your cursor, in any app, and it never leaves your Mac.</p>
+    <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center;">
+      <a class="btn-solid" href="https://github.com/angad729/yapping/releases/latest" style="padding: 14px 28px; font-size: 13px;">Download for macOS</a>
+      <a href="https://github.com/angad729/yapping" style="padding: 14px 28px; border-radius: 999px; border: 1px solid rgba(244,244,242,0.20); font-weight: 500; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;">View source</a>
+    </div>
+    <div style="display: flex; align-items: flex-end; gap: 10px; height: 72px; margin-top: 16px;" aria-label="live waveform">
+      <div class="yapbar" style="width: 14px; height: 26px; border-radius: 7px; background: #F4F4F2; transform-origin: bottom; animation: yapbar 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0s infinite;"></div>
+      <div class="yapbar" style="width: 14px; height: 44px; border-radius: 7px; background: #F4F4F2; transform-origin: bottom; animation: yapbar 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.15s infinite;"></div>
+      <div class="yapbar" style="width: 14px; height: 68px; border-radius: 7px; background: #F4F4F2; transform-origin: bottom; animation: yapbar 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.05s infinite;"></div>
+      <div class="yapbar" style="width: 14px; height: 38px; border-radius: 7px; background: #F4F4F2; transform-origin: bottom; animation: yapbar 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.25s infinite;"></div>
+      <div class="yapbar" style="width: 14px; height: 56px; border-radius: 7px; background: #F4F4F2; transform-origin: bottom; animation: yapbar 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.1s infinite;"></div>
+      <div class="yapbar" style="width: 14px; height: 30px; border-radius: 7px; background: #F4F4F2; transform-origin: bottom; animation: yapbar 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.3s infinite;"></div>
+      <div class="yapbar" style="width: 14px; height: 48px; border-radius: 7px; background: #F4F4F2; transform-origin: bottom; animation: yapbar 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.2s infinite;"></div>
+    </div>
+    <span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: #5C5C5A;">the logo dances above your Dock while you talk</span>
+    <p style="margin: 0; font-size: 13px; color: #9B9B98;">MIT licensed &middot; zero telemetry &middot; no account, ever</p>
+  </header>
+
+  <div style="overflow: hidden; border-top: 1px solid rgba(244,244,242,0.10); border-bottom: 1px solid rgba(244,244,242,0.10); padding: 14px 0; white-space: nowrap;">
+    <div class="yapmarquee" style="display: inline-flex; gap: 48px; animation: yapmarquee 22s linear infinite; font-weight: 900; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase;">
+      <span style="display: inline-flex; align-items: center; gap: 48px;"><span>No cloud</span><span style="color: var(--yap-accent);">+</span></span>
+      <span style="display: inline-flex; align-items: center; gap: 48px;"><span>No subscription</span><span style="color: var(--yap-accent);">+</span></span>
+      <span style="display: inline-flex; align-items: center; gap: 48px;"><span>No word limits</span><span style="color: var(--yap-accent);">+</span></span>
+      <span style="display: inline-flex; align-items: center; gap: 48px;"><span>No account</span><span style="color: var(--yap-accent);">+</span></span>
+      <span style="display: inline-flex; align-items: center; gap: 48px;"><span>On-device</span><span style="color: var(--yap-accent);">+</span></span>
+      <span style="display: inline-flex; align-items: center; gap: 48px;"><span>Open source</span><span style="color: var(--yap-accent);">+</span></span>
+      <span style="display: inline-flex; align-items: center; gap: 48px;"><span>No cloud</span><span style="color: var(--yap-accent);">+</span></span>
+      <span style="display: inline-flex; align-items: center; gap: 48px;"><span>No subscription</span><span style="color: var(--yap-accent);">+</span></span>
+      <span style="display: inline-flex; align-items: center; gap: 48px;"><span>No word limits</span><span style="color: var(--yap-accent);">+</span></span>
+      <span style="display: inline-flex; align-items: center; gap: 48px;"><span>No account</span><span style="color: var(--yap-accent);">+</span></span>
+      <span style="display: inline-flex; align-items: center; gap: 48px;"><span>On-device</span><span style="color: var(--yap-accent);">+</span></span>
+      <span style="display: inline-flex; align-items: center; gap: 48px;"><span>Open source</span><span style="color: var(--yap-accent);">+</span></span>
+    </div>
   </div>
-</nav>
 
-<header class="hero container">
-  <div class="pillbadge"><b>Free and open source</b> MIT licensed, zero telemetry</div>
-  <h1>Hold the <kbd class="fn">&#127760; fn</kbd> key.<br><span class="y">Yap.</span> Done.</h1>
-  <p class="sub">Private, on-device dictation for macOS. Your voice becomes clean text at your cursor, in any app, and it never leaves your Mac.</p>
-  <a class="btn big" href="https://github.com/angad729/yapping/releases/latest">Download for macOS</a>
-  <a class="ghost" href="https://github.com/angad729/yapping">View source</a>
-
-  <div class="demo reveal">
-    <div class="demo-screen">
-      <div class="typeline"><span id="typed"></span><span class="caret"></span></div>
-      <div class="dockpill" title="the yapping bars, dancing while you talk">
-        <i></i><i></i><i></i><i></i><i></i><i></i>
+  <section id="features" style="padding: 96px 48px; max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px;">
+    <div style="display: flex; flex-direction: column; gap: 12px; max-width: 640px;">
+      <span style="font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: #9B9B98;">features</span>
+      <h2 style="margin: 0; font-weight: 900; font-size: clamp(36px, 5vw, 64px); line-height: 1.05; letter-spacing: -0.02em; text-transform: uppercase;">Everything it should be. Nothing it shouldn't ask for.</h2>
+      <p style="margin: 0; font-size: 15px; line-height: 1.45; color: #9B9B98;">Built from what users of every major dictation app complain about: clouds, subscriptions, black-box AI, and mangled names.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+      <div class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 14px;">
+        <span style="align-self: flex-start; background: #F4F4F2; color: #0E0E0E; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 11px; border-radius: 999px;">private</span>
+        <h3 style="margin: 0; font-size: 22px; font-weight: 700; line-height: 1.05; letter-spacing: -0.01em;">On-device everything</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.45; color: #9B9B98;">Apple's SpeechAnalyzer for recognition, your own local Ollama model for cleanup. No account, no cloud, no word limits, no subscription. Ever.</p>
       </div>
-      <div class="demo-hint">the logo dances above your Dock while you talk</div>
+      <div class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 14px;">
+        <span style="align-self: flex-start; background: #F4F4F2; color: #0E0E0E; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 11px; border-radius: 999px;">fast</span>
+        <h3 style="margin: 0; font-size: 22px; font-weight: 700; line-height: 1.05; letter-spacing: -0.01em;">Starts before you finish</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.45; color: #9B9B98;">Audio streams into the recognizer while you are still talking, so the text lands the moment you release the key.</p>
+      </div>
+      <div class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 14px;">
+        <span style="align-self: flex-start; background: #F4F4F2; color: #0E0E0E; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 11px; border-radius: 999px;">yours</span>
+        <h3 style="margin: 0; font-size: 22px; font-weight: 700; line-height: 1.05; letter-spacing: -0.01em;">Personal dictionary</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.45; color: #9B9B98;">Your names, jargon, and acronyms bias the speech engine itself. It's Angad, not "on God".</p>
+      </div>
+      <div class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 14px;">
+        <span style="align-self: flex-start; background: #F4F4F2; color: #0E0E0E; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 11px; border-radius: 999px;">per app</span>
+        <h3 style="margin: 0; font-size: 22px; font-weight: 700; line-height: 1.05; letter-spacing: -0.01em;">Styles per app</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.45; color: #9B9B98;">Casual in Slack, formal in Mail, verbatim in the terminal. Every prompt is editable; nothing about the rewriting is hidden.</p>
+      </div>
+      <div class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 14px;">
+        <span style="align-self: flex-start; background: #F4F4F2; color: #0E0E0E; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 11px; border-radius: 999px;">voice edit</span>
+        <h3 style="margin: 0; font-size: 22px; font-weight: 700; line-height: 1.05; letter-spacing: -0.01em;">Edit by voice</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.45; color: #9B9B98;">Select text, hold the key, say "make this more formal". The selection is rewritten in place, or left untouched if the model fails.</p>
+      </div>
+      <div class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 14px;">
+        <span style="align-self: flex-start; background: #F4F4F2; color: #0E0E0E; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 11px; border-radius: 999px;">honest</span>
+        <h3 style="margin: 0; font-size: 22px; font-weight: 700; line-height: 1.05; letter-spacing: -0.01em;">Transparent cleanup</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.45; color: #9B9B98;">History shows raw and cleaned text side by side. If cleanup ever changes your meaning, you will see it, and your raw words always win on doubt.</p>
+      </div>
     </div>
-  </div>
-</header>
+  </section>
 
-<section id="features">
-  <div class="container">
-    <div class="kicker">features</div>
-    <h2>Everything a dictation tool should be.<br>Nothing it shouldn't ask for.</h2>
-    <p class="lead">Built from a deep dive into what users of every major dictation app complain about: clouds, subscriptions, black-box AI, and mangled names.</p>
-    <div class="grid">
-      <div class="card reveal"><div class="glyph">&#128274;</div><h3>On-device everything</h3><p>Apple's SpeechAnalyzer for recognition, your own local Ollama model for cleanup. No account, no cloud, no word limits, no subscription. Ever.</p></div>
-      <div class="card reveal"><div class="glyph">&#9889;</div><h3>Starts before you finish</h3><p>Audio streams into the recognizer while you are still talking, so the text lands the moment you release the key.</p></div>
-      <div class="card reveal"><div class="glyph">&#128218;</div><h3>Personal dictionary</h3><p>Your names, jargon, and acronyms bias the speech engine itself. It's Angad, not "on God".</p></div>
-      <div class="card reveal"><div class="glyph">&#127912;</div><h3>Styles per app</h3><p>Casual in Slack, formal in Mail, verbatim in the terminal. Every prompt is editable; nothing about the rewriting is hidden.</p></div>
-      <div class="card reveal"><div class="glyph">&#9999;&#65039;</div><h3>Edit by voice</h3><p>Select text, hold the key, say "make this more formal". The selection is rewritten in place, or left untouched if the model fails.</p></div>
-      <div class="card reveal"><div class="glyph">&#128064;</div><h3>Transparent cleanup</h3><p>History shows raw and cleaned text side by side. If cleanup ever changes your meaning, you will see it, and your raw words always win on doubt.</p></div>
+  <section style="padding: 0 48px 96px; max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px;">
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <span style="font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: #9B9B98;">how it works</span>
+      <h2 style="margin: 0; font-weight: 900; font-size: clamp(36px, 5vw, 64px); line-height: 1.05; letter-spacing: -0.02em; text-transform: uppercase;">Three seconds, start to sentence.</h2>
     </div>
-  </div>
-</section>
-
-<section id="how">
-  <div class="container">
-    <div class="kicker">how it works</div>
-    <h2>Three seconds, start to sentence.</h2>
-    <div class="steps">
-      <div class="step reveal"><h3>Hold</h3><p>Press and hold the globe key anywhere. The bars above your Dock start dancing with your voice.</p></div>
-      <div class="step reveal"><h3>Yap</h3><p>Say what you mean, ums and all. Correct yourself mid-sentence; only the final version survives.</p></div>
-      <div class="step reveal"><h3>Done</h3><p>Release. Clean text appears at your cursor, matched to the tone of whatever you were writing.</p></div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
+      <div style="border-top: 1px solid rgba(244,244,242,0.20); padding-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-weight: 900; font-size: 56px; line-height: 1; letter-spacing: -0.02em; color: var(--yap-accent);">01</span>
+        <h3 style="margin: 0; font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: -0.01em;">Hold</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.45; color: #9B9B98;">Press and hold the globe key anywhere. The bars above your Dock start dancing with your voice.</p>
+      </div>
+      <div style="border-top: 1px solid rgba(244,244,242,0.20); padding-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-weight: 900; font-size: 56px; line-height: 1; letter-spacing: -0.02em; color: var(--yap-accent);">02</span>
+        <h3 style="margin: 0; font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: -0.01em;">Yap</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.45; color: #9B9B98;">Say what you mean, ums and all. Correct yourself mid-sentence; only the final version survives.</p>
+      </div>
+      <div style="border-top: 1px solid rgba(244,244,242,0.20); padding-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-weight: 900; font-size: 56px; line-height: 1; letter-spacing: -0.02em; color: var(--yap-accent);">03</span>
+        <h3 style="margin: 0; font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: -0.01em;">Done</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.45; color: #9B9B98;">Release. Clean text appears at your cursor, matched to the tone of whatever you were writing.</p>
+      </div>
     </div>
-    <pre><code>git clone https://github.com/angad729/yapping.git
-cd yapping
-make install</code></pre>
-  </div>
-</section>
-
-<section id="privacy" class="privacy">
-  <div class="container">
-    <div class="kicker">privacy</div>
-    <p class="bigline reveal">A dictation app hears everything you say and sees everywhere you type. <span class="y">That is exactly why this one runs on your Mac and shows you its code.</span></p>
-    <p class="netlist">Complete list of network connections: <b>localhost</b> (your Ollama), and the GitHub API, only when you click Check for Updates.</p>
-  </div>
-</section>
-
-<section id="compare">
-  <div class="container">
-    <div class="kicker">compare</div>
-    <h2>The math is not subtle.</h2>
-    <div class="tablewrap">
-    <table>
-      <tr><th></th><th>yapping</th><th>Cloud dictation apps</th></tr>
-      <tr><td>Price</td><td class="yes">Free, forever</td><td class="meh">$12 to $15 per month</td></tr>
-      <tr><td>Where your voice goes</td><td class="yes">Nowhere</td><td class="meh">Their servers, their subprocessors</td></tr>
-      <tr><td>Word limits</td><td class="yes">None</td><td class="meh">2,000 words per week on free tiers</td></tr>
-      <tr><td>Works offline</td><td class="yes">Completely</td><td class="meh">No</td></tr>
-      <tr><td>Cleanup prompts</td><td class="yes">Yours to read and edit</td><td class="meh">Opaque</td></tr>
-      <tr><td>Source code</td><td class="yes">Open, MIT</td><td class="meh">Closed</td></tr>
-    </table>
+    <div style="align-self: flex-start; max-width: 100%; overflow-x: auto; background: #050505; border-radius: 10px; padding: 20px 24px; font-family: 'Geist Mono', monospace; font-size: 13px; line-height: 1.7; color: #9B9B98; box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;">
+      <span style="color: #5C5C5A;">$</span> git clone https://github.com/angad729/yapping.git<br>
+      <span style="color: #5C5C5A;">$</span> cd yapping<br>
+      <span style="color: #5C5C5A;">$</span> make install
     </div>
-  </div>
-</section>
+  </section>
 
-<section id="faq">
-  <div class="container">
-    <div class="kicker">faq</div>
-    <h2>Questions certified yappers ask.</h2>
-    <div style="margin-top: 28px;">
-      <details><summary>What does it need to run?</summary><p>macOS 26 on Apple Silicon. For the optional cleanup pass, install Ollama and pull a small model (gemma3:4b, about 3 GB). Without Ollama, yapping pastes accurate raw transcripts.</p></details>
-      <details><summary>Why does macOS warn me when I open the downloaded app?</summary><p>Releases are not notarized, which requires a paid Apple Developer membership. Allow the app once under System Settings, Privacy &amp; Security, or skip the warning entirely by building from source with make install. The code is public; read it first if you like.</p></details>
-      <details><summary>Is my audio or text stored anywhere?</summary><p>Your last 20 dictations are kept in a local history file so you can inspect what cleanup changed, and you can clear it any time. Audio is never written to disk; it streams from the mic straight into the on-device recognizer.</p></details>
-      <details><summary>Does it work in every app?</summary><p>Anywhere you can type: browsers, editors, chat apps, terminals. Terminals and code editors get verbatim mode by default so cleanup never touches your commands.</p></details>
-      <details><summary>Why the globe key?</summary><p>It sits in the corner doing almost nothing, your thumb already knows where it is, and holding it feels like a walkie-talkie. Set "Press globe key to: Do Nothing" in System Settings and yapping takes it from there.</p></details>
+  <section id="privacy" style="border-top: 1px solid rgba(244,244,242,0.10); border-bottom: 1px solid rgba(244,244,242,0.10); padding: 96px 48px;">
+    <div style="max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
+      <span style="font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: #9B9B98;">privacy</span>
+      <p style="margin: 0; max-width: 880px; font-weight: 700; font-size: clamp(24px, 3.2vw, 40px); line-height: 1.25; letter-spacing: -0.01em;">A dictation app hears everything you say and sees everywhere you type. That is exactly why this one runs on your Mac and shows you its code.</p>
+      <p style="margin: 0; font-family: 'Geist Mono', monospace; font-size: 13px; color: #9B9B98;">complete list of network connections: <span style="color: #F4F4F2;">localhost</span> (your Ollama) + the GitHub API, only when you click Check for Updates</p>
     </div>
-  </div>
-</section>
+  </section>
 
-<section class="cta">
-  <div class="container">
-    <span class="bars" style="height: 34px; gap: 5px;"><i style="width:5px"></i><i style="width:5px"></i><i style="width:5px"></i><i style="width:5px"></i><i style="width:5px"></i><i style="width:5px"></i></span>
-    <h2>Stop typing. Start yapping.</h2>
-    <p class="lead" style="margin: 0 auto 30px;">One clone, one make install, one permission screen. Then just hold the key.</p>
-    <a class="btn big" href="https://github.com/angad729/yapping/releases/latest">Download for macOS</a>
-  </div>
-</section>
+  <section style="padding: 96px 48px; max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px;">
+    <h2 style="margin: 0; font-weight: 900; font-size: clamp(36px, 5vw, 64px); line-height: 1.05; letter-spacing: -0.02em; text-transform: uppercase;">The math is not subtle.</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
+      <div class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-weight: 900; font-size: 48px; line-height: 1; letter-spacing: -0.02em; color: var(--yap-accent);">$0</span>
+        <span style="font-size: 13px; color: #9B9B98;">forever. Cloud apps run $12 to $15 per month</span>
+      </div>
+      <div class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-weight: 900; font-size: 48px; line-height: 1; letter-spacing: -0.02em; color: var(--yap-accent);">0</span>
+        <span style="font-size: 13px; color: #9B9B98;">words sent anywhere, no server-side subprocessors</span>
+      </div>
+      <div class="card" style="padding: 28px; display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-weight: 900; font-size: 48px; line-height: 1; letter-spacing: -0.02em; color: var(--yap-accent);">&#8734;</span>
+        <span style="font-size: 13px; color: #9B9B98;">word limit. Free tiers cap you at 2,000 per week</span>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column;">
+      <div style="display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; padding: 12px 16px; font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: #9B9B98;">
+        <span></span><span style="color: #F4F4F2;">yapping</span><span>cloud dictation apps</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; padding: 14px 16px; border-top: 1px solid rgba(244,244,242,0.10); font-size: 14px;">
+        <span style="color: #9B9B98;">Price</span><span style="font-weight: 700;">Free, forever</span><span style="color: #9B9B98;">$12 to $15 per month</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; padding: 14px 16px; border-top: 1px solid rgba(244,244,242,0.10); font-size: 14px;">
+        <span style="color: #9B9B98;">Where your voice goes</span><span style="font-weight: 700;">Nowhere</span><span style="color: #9B9B98;">Their servers, their subprocessors</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; padding: 14px 16px; border-top: 1px solid rgba(244,244,242,0.10); font-size: 14px;">
+        <span style="color: #9B9B98;">Word limits</span><span style="font-weight: 700;">None</span><span style="color: #9B9B98;">2,000 words per week on free tiers</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; padding: 14px 16px; border-top: 1px solid rgba(244,244,242,0.10); font-size: 14px;">
+        <span style="color: #9B9B98;">Works offline</span><span style="font-weight: 700;">Completely</span><span style="color: #9B9B98;">No</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; padding: 14px 16px; border-top: 1px solid rgba(244,244,242,0.10); font-size: 14px;">
+        <span style="color: #9B9B98;">Cleanup prompts</span><span style="font-weight: 700;">Yours to read and edit</span><span style="color: #9B9B98;">Opaque</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; padding: 14px 16px; border-top: 1px solid rgba(244,244,242,0.10); font-size: 14px;">
+        <span style="color: #9B9B98;">Source code</span><span style="font-weight: 700;">Open, MIT</span><span style="color: #9B9B98;">Closed</span>
+      </div>
+    </div>
+  </section>
 
-<footer>
-  <div class="container foot">
-    <span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-    <span>yapping</span>
-    <span class="spacer"></span>
-    <a class="gh-mark" href="https://github.com/angad729/yapping" aria-label="yapping on GitHub">
-      <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-    </a>
-    <a href="https://github.com/angad729/yapping/blob/main/ROADMAP.md">Roadmap</a>
-    <a href="https://github.com/angad729/yapping/blob/main/LICENSE">MIT License</a>
-    <span>Built by <a href="https://github.com/angad729">Angad Kandhari</a></span>
-  </div>
-</footer>
+  <section id="faq" style="padding: 0 48px 96px; max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px;">
+    <h2 style="margin: 0; font-weight: 900; font-size: clamp(36px, 5vw, 64px); line-height: 1.05; letter-spacing: -0.02em; text-transform: uppercase;">Questions certified yappers ask.</h2>
+    <div style="display: flex; flex-direction: column;">
+      <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
+        <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em;">
+          <span>What does it need to run?</span><span class="yap-x" style="font-weight: 500; font-size: 22px; color: #9B9B98; flex-shrink: 0;">+</span>
+        </summary>
+        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.45; color: #9B9B98; max-width: 700px;">macOS 26 on Apple Silicon. For the optional cleanup pass, install Ollama and pull a small model (gemma3:4b, about 3 GB). Without Ollama, yapping pastes accurate raw transcripts.</p>
+      </details>
+      <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
+        <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em;">
+          <span>Why does macOS warn me when I open the downloaded app?</span><span class="yap-x" style="font-weight: 500; font-size: 22px; color: #9B9B98; flex-shrink: 0;">+</span>
+        </summary>
+        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.45; color: #9B9B98; max-width: 700px;">Releases are not notarized, which requires a paid Apple Developer membership. Allow the app once under System Settings, Privacy &amp; Security, or skip the warning entirely by building from source with make install. The code is public; read it first if you like.</p>
+      </details>
+      <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
+        <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em;">
+          <span>Is my audio or text stored anywhere?</span><span class="yap-x" style="font-weight: 500; font-size: 22px; color: #9B9B98; flex-shrink: 0;">+</span>
+        </summary>
+        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.45; color: #9B9B98; max-width: 700px;">Your last 20 dictations are kept in a local history file so you can inspect what cleanup changed, and you can clear it any time. Audio is never written to disk; it streams from the mic straight into the on-device recognizer.</p>
+      </details>
+      <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
+        <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em;">
+          <span>Does it work in every app?</span><span class="yap-x" style="font-weight: 500; font-size: 22px; color: #9B9B98; flex-shrink: 0;">+</span>
+        </summary>
+        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.45; color: #9B9B98; max-width: 700px;">Anywhere you can type: browsers, editors, chat apps, terminals. Terminals and code editors get verbatim mode by default so cleanup never touches your commands.</p>
+      </details>
+      <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
+        <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em;">
+          <span>Why the globe key?</span><span class="yap-x" style="font-weight: 500; font-size: 22px; color: #9B9B98; flex-shrink: 0;">+</span>
+        </summary>
+        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.45; color: #9B9B98; max-width: 700px;">It sits in the corner doing almost nothing, your thumb already knows where it is, and holding it feels like a walkie-talkie. Set "Press globe key to: Do Nothing" in System Settings and yapping takes it from there.</p>
+      </details>
+    </div>
+  </section>
 
-<script>
-  // Typing demo: raw yap types out, then cleans itself up
-  const raw = "um so basically, uh, can we ship the release on friday you know";
-  const clean = "Can we ship the release on Friday?";
-  const el = document.getElementById("typed");
-  let i = 0;
-  function typeRaw() {
-    if (i <= raw.length) { el.textContent = raw.slice(0, i++); setTimeout(typeRaw, 34); }
-    else setTimeout(swap, 900);
-  }
-  function swap() {
-    el.style.transition = "opacity .25s"; el.style.opacity = 0;
-    setTimeout(() => { el.textContent = clean; el.style.color = "#FF5A1F"; el.style.opacity = 1; }, 260);
-    setTimeout(() => { el.style.color = ""; i = 0; el.textContent = ""; typeRaw(); }, 4200);
-  }
-  typeRaw();
+  <section style="border-top: 1px solid rgba(244,244,242,0.10); padding: 120px 48px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 28px;">
+    <h2 style="margin: 0; font-weight: 900; font-size: clamp(48px, 8vw, 120px); line-height: 0.92; letter-spacing: -0.02em; text-transform: uppercase;">Stop typing.<br><span style="color: var(--yap-accent);">Start yapping.</span></h2>
+    <p style="margin: 0; font-size: 15px; color: #9B9B98;">One clone, one make install, one permission screen. Then just hold the key.</p>
+    <a class="btn-solid" href="https://github.com/angad729/yapping/releases/latest" style="padding: 14px 28px; font-size: 13px;">Download for macOS</a>
+  </section>
 
-  // Reveal on scroll
-  const io = new IntersectionObserver(entries => {
-    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
-  }, { threshold: 0.15 });
-  document.querySelectorAll(".reveal").forEach(n => io.observe(n));
-</script>
+  <footer style="border-top: 1px solid rgba(244,244,242,0.10); padding: 28px 48px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; font-size: 13px; color: #9B9B98;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <svg width="22" height="22"><use href="#lic"></use></svg>
+      <span style="color: #F4F4F2; font-weight: 700;">yapping</span>
+    </div>
+    <div style="display: flex; gap: 24px;">
+      <a href="https://github.com/angad729/yapping" style="color: #9B9B98;">github</a>
+      <a href="https://github.com/angad729/yapping/blob/main/ROADMAP.md" style="color: #9B9B98;">roadmap</a>
+      <a href="https://github.com/angad729/yapping/blob/main/LICENSE" style="color: #9B9B98;">MIT license</a>
+    </div>
+    <span>Built by <a href="https://github.com/angad729" style="color: #F4F4F2;">Angad Kandhari</a></span>
+  </footer>
+</div>
 </body>
 </html>

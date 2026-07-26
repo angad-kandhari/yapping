@@ -15,7 +15,7 @@
       <rect x="742" y="432" width="70" height="160" rx="35"></rect>
     </g>
     <g transform="rotate(-12 700 300)">
-      <rect x="560" y="240" width="280" height="118" rx="59" fill="#FFD400"></rect>
+      <rect x="560" y="240" width="280" height="118" rx="59" fill="#FF5A1F"></rect>
       <text x="700" y="322" text-anchor="middle" font-family="Geist, sans-serif" font-weight="700" font-size="64" letter-spacing="3.8" fill="#0E0E0E">YAP</text>
     </g>
     <use href="#sq" fill="url(#bev)"></use>
