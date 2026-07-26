@@ -2,18 +2,22 @@ import SwiftUI
 import Speech
 
 struct SettingsView: View {
+    @State private var tab = 0
+
     var body: some View {
-        TabView {
-            GeneralSettings()
-                .tabItem { Label("General", systemImage: "gearshape") }
-            DictionarySettings()
-                .tabItem { Label("Dictionary", systemImage: "character.book.closed") }
-            StylesSettings()
-                .tabItem { Label("Styles", systemImage: "paintbrush") }
-            AboutSettings()
-                .tabItem { Label("About", systemImage: "info.circle") }
+        BrandChrome(title: "settings") {
+            BrandTabs(tabs: ["General", "Dictionary", "Styles", "About"], selection: $tab)
+            Group {
+                switch tab {
+                case 0: GeneralSettings()
+                case 1: DictionarySettings()
+                case 2: StylesSettings()
+                default: AboutSettings()
+                }
+            }
+            .scrollContentBackground(.hidden)
         }
-        .frame(width: 540, height: 460)
+        .frame(width: 560, height: 500)
     }
 }
 
@@ -50,8 +54,8 @@ private struct GeneralSettings: View {
                 Toggle("Use on-screen context", isOn: $config.useFieldContext)
                 Text("Reads the focused text field so cleanup matches its tone. Processed locally, never leaves this Mac.")
                     .font(.caption).foregroundStyle(.secondary)
-                Toggle("Live transcript preview", isOn: $config.hudEnabled)
-                Text("Floating panel showing your words as you speak.")
+                Toggle("Waveform above the Dock", isOn: $config.hudEnabled)
+                Text("The yapping logo dances with your voice while you talk.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -187,10 +191,11 @@ private struct StylesSettings: View {
 
 private struct AboutSettings: View {
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
                 .frame(width: 96, height: 96)
+            BrandLogo(height: 22, color: .white)
             Text("yapping").font(.system(size: 28, weight: .bold))
             Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev")")
                 .foregroundStyle(.secondary)
@@ -199,6 +204,7 @@ private struct AboutSettings: View {
                 .foregroundStyle(.secondary)
             Link("github.com/angad729/yapping",
                  destination: URL(string: "https://github.com/angad729/yapping")!)
+                .foregroundStyle(Brand.yellow)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

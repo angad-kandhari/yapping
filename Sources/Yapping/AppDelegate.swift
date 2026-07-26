@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: StatusItem!
     private lazy var settingsWindow = UtilityWindow(title: "Yapping Settings") { SettingsView() }
     private lazy var historyWindow = UtilityWindow(title: "Yapping History") { HistoryView() }
+    private lazy var onboardingWindow = UtilityWindow(title: "Welcome to yapping") { OnboardingView() }
 
     private var busy = false
     private var cancelled = false
@@ -21,7 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var localeWatcher: AnyCancellable?
     private var activeStyle: Style?
     private var axSnapshot: Task<(String?, String?), Never>?
-    private let hud = PreviewHUD()
+    private let hud = WaveformHUD()
 
     /// Holds shorter than this are accidental taps; discard them.
     private let minHold: TimeInterval = 0.35
@@ -32,11 +33,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = StatusItem(
             onSettings: { [weak self] in self?.settingsWindow.show() },
             onHistory: { [weak self] in self?.historyWindow.show() },
+            onSetup: { [weak self] in self?.onboardingWindow.show() },
+            onUpdates: { UpdateCheck.run() },
             onQuit: { [weak self] in
                 self?.fnMonitor.stop()
                 NSApp.terminate(nil)
             }
         )
+
+        // First run, or any missing grant: open the setup assistant
+        let ready = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+            && CGPreflightListenEventAccess()
+            && AXIsProcessTrusted()
+        if !ready {
+            onboardingWindow.show()
+        }
 
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
 
@@ -49,9 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         transcriber.onLevel = { [weak self] level in
             self?.statusItem.pushLevel(level)
-        }
-        transcriber.onPartial = { [weak self] finalized, volatile in
-            self?.hud.update(finalized: finalized, volatile: volatile)
+            self?.hud.pushLevel(level)
         }
 
         requestPermissions()

@@ -60,6 +60,14 @@ struct HistoryView: View {
     @ObservedObject var store = HistoryStore.shared
 
     var body: some View {
+        BrandChrome(title: "history") {
+            historyContent
+        }
+        .frame(minWidth: 500, minHeight: 400)
+    }
+
+    @ViewBuilder
+    private var historyContent: some View {
         Group {
             if store.entries.isEmpty {
                 Text("No dictations yet. Hold the globe key and yap.")
@@ -90,9 +98,14 @@ struct HistoryView: View {
                 }
             }
         }
-        .frame(minWidth: 480, minHeight: 360)
-        .toolbar {
-            Button("Clear") { store.clear() }
+        .scrollContentBackground(.hidden)
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Spacer()
+                Button("Clear history") { store.clear() }
+                    .disabled(store.entries.isEmpty)
+            }
+            .padding(12)
         }
     }
 }

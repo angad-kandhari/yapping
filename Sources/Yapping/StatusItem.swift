@@ -34,6 +34,8 @@ final class StatusItem {
     init(
         onSettings: @escaping () -> Void,
         onHistory: @escaping () -> Void,
+        onSetup: @escaping () -> Void,
+        onUpdates: @escaping () -> Void,
         onQuit: @escaping () -> Void
     ) {
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -43,19 +45,23 @@ final class StatusItem {
         menu.addItem(statusLine)
         menu.addItem(.separator())
 
-        let target = MenuTarget(onSettings: onSettings, onHistory: onHistory, onQuit: onQuit)
+        let target = MenuTarget(
+            onSettings: onSettings, onHistory: onHistory,
+            onSetup: onSetup, onUpdates: onUpdates, onQuit: onQuit)
         objc_setAssociatedObject(menu, "target", target, .OBJC_ASSOCIATION_RETAIN)
 
-        let history = NSMenuItem(title: "History...", action: #selector(MenuTarget.history), keyEquivalent: "h")
-        history.target = target
-        menu.addItem(history)
-        let settings = NSMenuItem(title: "Settings...", action: #selector(MenuTarget.settings), keyEquivalent: ",")
-        settings.target = target
-        menu.addItem(settings)
+        func add(_ title: String, _ action: Selector, _ key: String = "") {
+            let entry = NSMenuItem(title: title, action: action, keyEquivalent: key)
+            entry.target = target
+            menu.addItem(entry)
+        }
+        add("History...", #selector(MenuTarget.history), "h")
+        add("Settings...", #selector(MenuTarget.settings), ",")
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit Yapping", action: #selector(MenuTarget.quit), keyEquivalent: "q")
-        quit.target = target
-        menu.addItem(quit)
+        add("Setup Assistant...", #selector(MenuTarget.setup))
+        add("Check for Updates...", #selector(MenuTarget.updates))
+        menu.addItem(.separator())
+        add("Quit Yapping", #selector(MenuTarget.quit), "q")
         item.menu = menu
 
         redraw()
@@ -146,19 +152,27 @@ final class StatusItem {
 private final class MenuTarget: NSObject {
     private let onSettings: () -> Void
     private let onHistory: () -> Void
+    private let onSetup: () -> Void
+    private let onUpdates: () -> Void
     private let onQuit: () -> Void
 
     init(
         onSettings: @escaping () -> Void,
         onHistory: @escaping () -> Void,
+        onSetup: @escaping () -> Void,
+        onUpdates: @escaping () -> Void,
         onQuit: @escaping () -> Void
     ) {
         self.onSettings = onSettings
         self.onHistory = onHistory
+        self.onSetup = onSetup
+        self.onUpdates = onUpdates
         self.onQuit = onQuit
     }
 
     @objc func settings() { onSettings() }
     @objc func history() { onHistory() }
+    @objc func setup() { onSetup() }
+    @objc func updates() { onUpdates() }
     @objc func quit() { onQuit() }
 }

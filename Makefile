@@ -36,3 +36,12 @@ run: sign
 
 clean:
 	rm -rf .build
+
+# Cut a GitHub release: make release NOTES=notes.md (version from Info.plist)
+VERSION := $(shell /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Support/Info.plist)
+release: sign
+	ditto -c -k --keepParent $(APP) .build/Yapping-v$(VERSION).zip
+	git tag v$(VERSION)
+	git push origin v$(VERSION)
+	gh release create v$(VERSION) .build/Yapping-v$(VERSION).zip \
+		--title "Yapping v$(VERSION)" $(if $(NOTES),--notes-file $(NOTES),--generate-notes)

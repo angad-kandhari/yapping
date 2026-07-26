@@ -19,7 +19,12 @@ final class UtilityWindow<Content: View> {
             let hosting = NSHostingController(rootView: makeContent())
             let w = NSWindow(contentViewController: hosting)
             w.title = title
-            w.styleMask = [.titled, .closable, .miniaturizable]
+            w.styleMask = [.titled, .closable, .miniaturizable, .fullSizeContentView]
+            // Brand chrome draws its own header; hide the system titlebar
+            w.titlebarAppearsTransparent = true
+            w.titleVisibility = .hidden
+            w.isMovableByWindowBackground = true
+            w.appearance = NSAppearance(named: .darkAqua)
             w.isReleasedWhenClosed = false
             w.center()
             window = w

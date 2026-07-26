@@ -7,10 +7,8 @@ import Speech
 /// is nearly complete the moment they release. No Whisper, no model files to
 /// manage; the OS downloads and owns the speech model.
 final class Transcriber {
-    /// Per-buffer loudness (RMS), feeds the menu bar waveform.
+    /// Per-buffer loudness (RMS), feeds the waveform animations.
     var onLevel: ((Float) -> Void)?
-    /// Live transcript for the preview HUD: (finalized, volatile tail).
-    var onPartial: ((String, String) -> Void)?
 
     private var locale: Locale { Locale(identifier: ConfigStore.shared.localeID) }
     private let engine = AVAudioEngine()
@@ -25,8 +23,7 @@ final class Transcriber {
         SpeechTranscriber(
             locale: locale,
             transcriptionOptions: [],
-            // Volatile results only cost anything when the HUD wants them
-            reportingOptions: ConfigStore.shared.hudEnabled ? [.volatileResults] : [],
+            reportingOptions: [],
             attributeOptions: []
         )
     }
@@ -69,16 +66,10 @@ final class Transcriber {
             }
         }
 
-        resultsTask = Task { [weak self] in
+        resultsTask = Task {
             var text = ""
-            for try await result in module.results {
-                if result.isFinal {
-                    text += String(result.text.characters)
-                    self?.onPartial?(text, "")
-                } else {
-                    // Volatile text is replaced wholesale as recognition refines
-                    self?.onPartial?(text, String(result.text.characters))
-                }
+            for try await result in module.results where result.isFinal {
+                text += String(result.text.characters)
             }
             return text
         }

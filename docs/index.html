@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>yapping - private, on-device dictation for macOS</title>
+<meta name="description" content="Hold the globe key. Yap. Done. Private, on-device dictation for macOS. No cloud, no subscription, no word limits.">
+<style>
+  :root { --bg: #0e0e12; --surface: #1a1a20; --yellow: #f5d145; --text: #f2f2f2; --muted: #9a9aa5; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif; line-height: 1.6; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 64px 24px; text-align: center; }
+  .icon { width: 128px; border-radius: 28px; }
+  .wordmark { width: 240px; margin: 28px auto 8px; display: block; }
+  .tagline { font-size: 22px; font-weight: 600; margin-top: 8px; }
+  .sub { color: var(--muted); margin-top: 6px; }
+  .bars { display: flex; gap: 6px; align-items: center; justify-content: center; height: 48px; margin: 36px 0; }
+  .bars span { width: 6px; background: var(--yellow); border-radius: 3px; animation: dance 1.1s ease-in-out infinite; }
+  .bars span:nth-child(1) { height: 12px; animation-delay: 0s; }
+  .bars span:nth-child(2) { height: 27px; animation-delay: .15s; }
+  .bars span:nth-child(3) { height: 45px; animation-delay: .3s; }
+  .bars span:nth-child(4) { height: 21px; animation-delay: .45s; }
+  .bars span:nth-child(5) { height: 33px; animation-delay: .6s; }
+  .bars span:nth-child(6) { height: 9px; animation-delay: .75s; }
+  @keyframes dance { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.6); } }
+  .features { text-align: left; margin: 40px auto; display: grid; gap: 14px; }
+  .feature { background: var(--surface); border-radius: 12px; padding: 16px 20px; }
+  .feature b { display: block; margin-bottom: 2px; }
+  .feature span { color: var(--muted); font-size: 14.5px; }
+  pre { background: #000; border: 1px solid #2a2a32; border-radius: 12px; padding: 18px 22px; text-align: left; overflow-x: auto; font-size: 14px; line-height: 1.7; margin: 28px 0 10px; }
+  code { color: var(--yellow); font-family: "SF Mono", ui-monospace, monospace; }
+  a.btn { display: inline-block; background: var(--yellow); color: #000; font-weight: 700; padding: 12px 26px; border-radius: 999px; text-decoration: none; margin: 10px 8px 0; }
+  a.ghost { display: inline-block; color: var(--text); border: 1px solid #3a3a44; padding: 12px 26px; border-radius: 999px; text-decoration: none; margin: 10px 8px 0; }
+  .privacy { color: var(--muted); font-size: 14px; margin-top: 44px; }
+  footer { color: #55555f; font-size: 13px; margin-top: 48px; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <img class="icon" src="assets/yapping-icon-1024.png" alt="yapping icon">
+  <img class="wordmark" src="assets/wordmark-dark.png" alt="yapping">
+  <p class="tagline">Hold the globe key. Yap. Done.</p>
+  <p class="sub">Private, on-device dictation for macOS. For certified yappers.</p>
+
+  <div class="bars" aria-hidden="true">
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+  </div>
+
+  <div class="features">
+    <div class="feature"><b>Everything stays on your Mac</b>
+      <span>Apple's on-device speech engine plus your own local LLM for cleanup. No cloud, no account, no telemetry, no word limits, no subscription. Ever.</span></div>
+    <div class="feature"><b>Fast because it starts early</b>
+      <span>Audio streams into the recognizer while you are still talking, so text lands the moment you let go.</span></div>
+    <div class="feature"><b>Your words, not the AI's</b>
+      <span>Cleanup strips the ums and fixes punctuation behind editable prompts, with guards that fall back to your raw words. History shows raw and cleaned side by side.</span></div>
+    <div class="feature"><b>Knows where you are typing</b>
+      <span>Casual in Slack, formal in Mail, verbatim in the terminal. Select text and speak an instruction to rewrite it.</span></div>
+  </div>
+
+  <pre><code>git clone https://github.com/angad729/yapping.git
+cd yapping
+make install</code></pre>
+
+  <a class="btn" href="https://github.com/angad729/yapping/releases/latest">Download</a>
+  <a class="ghost" href="https://github.com/angad729/yapping">GitHub</a>
+
+  <p class="privacy">Network connections: localhost (your Ollama) and, only when you click Check for Updates, the GitHub API. That is the whole list.</p>
+
+  <footer>MIT licensed. Built by <a href="https://github.com/angad729">Angad Kandhari</a>.</footer>
+</div>
+</body>
+</html>

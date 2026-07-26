@@ -143,6 +143,9 @@ enum Cleanup {
         return edited
     }
 
+    /// Public reachability check (used by the setup assistant).
+    static func reachable() async -> Bool { await isUp() }
+
     /// Fast health check so a stopped Ollama costs ~1s, not a long timeout.
     private static func isUp() async -> Bool {
         guard let url = URL(string: "\(host)/api/tags") else { return false }
