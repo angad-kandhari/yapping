@@ -61,9 +61,6 @@ final class StatusItem {
         add("Setup Assistant", #selector(MenuTarget.setup))
         add("Check for Updates", #selector(MenuTarget.updates))
         menu.addItem(.separator())
-        add("Request a Feature", #selector(MenuTarget.requestFeature))
-        add("Report a Bug", #selector(MenuTarget.reportBug))
-        menu.addItem(.separator())
         add("Quit Yapping", #selector(MenuTarget.quit), "q")
         item.menu = menu
 
@@ -178,20 +175,4 @@ private final class MenuTarget: NSObject {
     @objc func setup() { onSetup() }
     @objc func updates() { onUpdates() }
     @objc func quit() { onQuit() }
-
-    // Feedback goes through GitHub issue forms: structured, spam-resistant,
-    // and no contact details are ever shipped inside the app
-    @objc func requestFeature() {
-        open("https://github.com/angad729/yapping/issues/new?template=feature_request.yml")
-    }
-
-    @objc func reportBug() {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"]
-            as? String ?? ""
-        open("https://github.com/angad729/yapping/issues/new?template=bug_report.yml&version=\(version)")
-    }
-
-    private func open(_ url: String) {
-        if let u = URL(string: url) { NSWorkspace.shared.open(u) }
-    }
 }
