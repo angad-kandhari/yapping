@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>yapping - private, on-device dictation for macOS</title>
-<meta name="description" content="Don't get billed for talking. Private, on-device dictation for macOS. Hold the globe key, yap, release. Free forever, open source.">
+<title>yapping - private, on-device dictation for macOS and Windows</title>
+<meta name="description" content="Don't get billed for talking. Private, on-device dictation for macOS and Windows. Hold one key, yap, release. Free forever, open source.">
 <meta property="og:title" content="yapping">
-<meta property="og:description" content="Don't get billed for talking. Private, on-device dictation for macOS.">
+<meta property="og:description" content="Don't get billed for talking. Private, on-device dictation for macOS and Windows.">
 <meta property="og:image" content="https://get-yapping.com/assets/yapping-icon-1024.png">
 <link rel="icon" href="assets/yapping-icon-1024.png">
 <style>
@@ -78,6 +78,9 @@
       <symbol id="apl" viewBox="0 0 24 24">
         <path fill="currentColor" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.03 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.56-1.702z"></path>
       </symbol>
+      <symbol id="win" viewBox="0 0 16 16">
+        <path fill="currentColor" d="M0 0h7.6v7.6H0zM8.4 0H16v7.6H8.4zM0 8.4h7.6V16H0zM8.4 8.4H16V16H8.4z"></path>
+      </symbol>
       <symbol id="octo" viewBox="0 0 16 16">
         <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"></path>
       </symbol>
@@ -95,7 +98,7 @@
       <a href="#how">how</a>
       <a href="#faq">faq</a>
       <a class="gh-mark" href="https://github.com/angad-kandhari/yapping" aria-label="yapping on GitHub"><svg width="20" height="20"><use href="#octo"></use></svg></a>
-      <a class="btn keep" href="https://github.com/angad-kandhari/yapping/releases/latest/download/Yapping.dmg" style="padding: 9px 20px; font-size: 12px;">Download</a>
+      <a class="btn keep" href="#download" style="padding: 9px 20px; font-size: 12px;">Download</a>
     </div>
   </nav>
 
@@ -103,9 +106,10 @@
     <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 24px; padding: 88px 48px 0;">
       <span class="mono" style="font-size: 12px; color: #9B9B98; letter-spacing: 0.06em;">WHAT TALKING TO YOUR OWN MAC CAN COST OUT THERE. ILLUSTRATIVE, OBVIOUSLY.</span>
       <h1 style="margin: 0; font-weight: 900; font-size: clamp(64px, 9.5vw, 144px); line-height: 0.9; letter-spacing: -0.02em; text-transform: uppercase;">Don't get billed<br>for <span style="color: var(--yap-accent);">talking.</span></h1>
-      <p style="margin: 0; max-width: 520px; font-size: 16px; line-height: 1.45; color: #9B9B98;">Private, on-device dictation for macOS. Hold the globe key, yap, release. Clean text at your cursor, in any app, and your voice never leaves the machine.</p>
+      <p style="margin: 0; max-width: 520px; font-size: 16px; line-height: 1.45; color: #9B9B98;">Private, on-device dictation for macOS, and now Windows in early beta. Hold one key, yap, release. Your words at your cursor, in any app, and your voice never leaves the machine.</p>
       <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center;">
         <a class="btn" href="https://github.com/angad-kandhari/yapping/releases/latest/download/Yapping.dmg" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="16" height="16" style="margin-top: -2px;"><use href="#apl"></use></svg>Download for macOS</a>
+        <a class="btn" href="https://github.com/angad-kandhari/yapping-windows/releases/latest/download/Yapping-Setup.exe" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="15" height="15" style="margin-top: -1px;"><use href="#win"></use></svg>Download for Windows</a>
         <a class="ghost" href="https://github.com/angad-kandhari/yapping" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="17" height="17" style="color: #F4F4F2;"><use href="#octo"></use></svg>Read the source</a>
       </div>
       <span class="mono" style="font-size: 11px; color: #5C5C5A; letter-spacing: 0.04em;">the invoices are draggable. the prices are not.</span>
@@ -281,7 +285,7 @@
     <div style="max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px;">
       <span class="mono" style="font-size: 12px; color: #9B9B98; letter-spacing: 0.06em;">PRIVACY, THE SHORT VERSION</span>
       <p style="margin: 0; font-weight: 900; font-size: clamp(26px, 4vw, 44px); line-height: 1.15; letter-spacing: -0.01em; text-transform: uppercase;">A dictation app hears everything. <span style="color: var(--yap-accent);">That's why this one can't phone home.</span></p>
-      <p class="mono" style="margin: 0; font-size: 12.5px; color: #9B9B98;">complete list of network connections: <span style="color: #F4F4F2;">localhost</span> (your Ollama, if you use it) + the GitHub API, only when you click Check for Updates. read the source and verify.</p>
+      <p class="mono" style="margin: 0; font-size: 12.5px; color: #9B9B98;">complete list of network connections: <span style="color: #F4F4F2;">localhost</span> (your Ollama, if you use it) + the GitHub API, only when you click Check for Updates. the windows beta also downloads its speech model from Hugging Face, once. read the source and verify.</p>
     </div>
   </section>
 
@@ -290,11 +294,15 @@
     <div style="display: flex; flex-direction: column;">
       <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
         <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700;"><span>What does it need to run?</span><span class="yap-x" style="font-size: 22px; color: var(--yap-accent);">+</span></summary>
-        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.5; color: #9B9B98; max-width: 700px;">macOS 26 on Apple Silicon. Cleanup works out of the box with Apple's on-device model; Ollama and OpenAI-compatible endpoints are there for tinkerers. Without any of them, yapping pastes accurate raw transcripts.</p>
+        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.5; color: #9B9B98; max-width: 700px;">macOS 26 on Apple Silicon, or 64-bit Windows 10/11 for the beta. On the Mac, cleanup works out of the box with Apple's on-device model; Ollama and OpenAI-compatible endpoints are there for tinkerers. Without any of them, yapping pastes accurate raw transcripts.</p>
       </details>
       <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
         <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700;"><span>Why does macOS warn me about the downloaded app?</span><span class="yap-x" style="font-size: 22px; color: var(--yap-accent);">+</span></summary>
         <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.5; color: #9B9B98; max-width: 700px;">Releases are not notarized; that requires paying Apple $99 a year, and this app costs $0 forever. Allow it once under System Settings, Privacy &amp; Security, or skip the warning entirely by building from source. The code is public; read it first if you like.</p>
+      </details>
+      <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
+        <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700;"><span>Is the Windows app the same?</span><span class="yap-x" style="font-size: 22px; color: var(--yap-accent);">+</span></summary>
+        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.5; color: #9B9B98; max-width: 700px;">It's a fresh beta, rebuilt in Rust around the same idea. Hold Ctrl+Win, speak, release; the raw transcript pastes at your cursor. Transcription runs fully on-device (the speech model downloads once on first run, about 640 MB). The recording overlay, cleanup, per-app styles, and history from the Mac app are on the way. The installer isn't code-signed yet, so SmartScreen will warn once: choose More info, then Run anyway, or read the source first.</p>
       </details>
       <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
         <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700;"><span>Is my audio or text stored anywhere?</span><span class="yap-x" style="font-size: 22px; color: var(--yap-accent);">+</span></summary>
@@ -306,15 +314,19 @@
       </details>
       <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
         <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700;"><span>Why the globe key?</span><span class="yap-x" style="font-size: 22px; color: var(--yap-accent);">+</span></summary>
-        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.5; color: #9B9B98; max-width: 700px;">It sits in the corner doing almost nothing, your thumb already knows where it is, and holding it feels like a walkie-talkie. Set "Press globe key to: Do Nothing" in System Settings and yapping takes it from there. Or double-tap it and go hands-free.</p>
+        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.5; color: #9B9B98; max-width: 700px;">It sits in the corner doing almost nothing, your thumb already knows where it is, and holding it feels like a walkie-talkie. Set "Press globe key to: Do Nothing" in System Settings and yapping takes it from there. Or double-tap it and go hands-free. On Windows the chord is Ctrl+Win: same walkie-talkie, different corner.</p>
       </details>
     </div>
   </section>
 
-  <section style="border-top: 1px solid rgba(244,244,242,0.10); padding: 120px 48px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 28px;">
+  <section id="download" style="border-top: 1px solid rgba(244,244,242,0.10); padding: 120px 48px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 28px;">
     <h2 style="margin: 0; font-weight: 900; font-size: clamp(48px, 8vw, 120px); line-height: 0.92; letter-spacing: -0.02em; text-transform: uppercase;">Keep the<br><span style="color: var(--yap-accent);">$720.</span></h2>
-    <p style="margin: 0; font-size: 15px; color: #9B9B98;">One clone, one make install, one permission screen. Then just hold the key.</p>
-    <a class="btn" href="https://github.com/angad-kandhari/yapping/releases/latest/download/Yapping.dmg" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="16" height="16" style="margin-top: -2px;"><use href="#apl"></use></svg>Download for macOS</a>
+    <p style="margin: 0; font-size: 15px; color: #9B9B98;">One download, one permission screen. Then just hold the key.</p>
+    <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center;">
+      <a class="btn" href="https://github.com/angad-kandhari/yapping/releases/latest/download/Yapping.dmg" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="16" height="16" style="margin-top: -2px;"><use href="#apl"></use></svg>Download for macOS</a>
+      <a class="btn" href="https://github.com/angad-kandhari/yapping-windows/releases/latest/download/Yapping-Setup.exe" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="15" height="15" style="margin-top: -1px;"><use href="#win"></use></svg>Download for Windows</a>
+    </div>
+    <span class="mono" style="font-size: 11px; color: #5C5C5A; letter-spacing: 0.04em;">macOS 26 on Apple Silicon &middot; 64-bit Windows 10/11, early beta</span>
   </section>
 
   <footer style="border-top: 1px solid rgba(244,244,242,0.10); padding: 28px 48px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; font-size: 13px; color: #9B9B98;">
