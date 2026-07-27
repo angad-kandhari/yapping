@@ -84,6 +84,19 @@ final class ListenController {
                     for await buffer in buffers {
                         guard let self else { break }
                         received += 1
+                        if received <= 3 || received % 200 == 0 {
+                            var rms: Float = 0
+                            if let data = buffer.floatChannelData?[0], buffer.frameLength > 0 {
+                                var sum: Float = 0
+                                let stride = Int(buffer.format.isInterleaved ? buffer.format.channelCount : 1)
+                                var i = 0
+                                while i < Int(buffer.frameLength) * stride {
+                                    sum += data[i] * data[i]
+                                    i += stride
+                                }
+                                rms = (sum / Float(buffer.frameLength)).squareRoot()
+                            }
+                        }
                         if received == 1 {
                             await MainActor.run { self.model.statusLine = "Listening..." }
                         }

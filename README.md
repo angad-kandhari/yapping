@@ -49,6 +49,8 @@ subscription, no word limits.
 | **Transparent history** | Raw and cleaned text side by side; cleanup is never a black box |
 | **On-screen context** | Reads the focused field locally so tone matches what you are writing |
 | **Honest updates** | A real Updates window with release notes; checks only when you ask |
+| **Transcribe files** | Audio and video files, many times faster than real time; menu or drag onto the icon |
+| **Listen mode** | Transcribes what your Mac is playing: lectures, podcasts, the other side of calls |
 
 ## Install
 

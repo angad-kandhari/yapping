@@ -42,7 +42,10 @@ final class ProcessTapSource {
     /// Starts capture; the first call ever triggers the system permission
     /// prompt. Returns a stream of PCM buffers in the tap's native format.
     func start() throws -> AsyncStream<AVAudioPCMBuffer> {
-        let description = CATapDescription(stereoMixdownOfProcesses: [])
+        // Global tap with an empty EXCLUSION list = capture everything.
+        // (stereoMixdownOfProcesses: [] is a mixdown of zero processes,
+        // which is permanent silence. Learned the hard way.)
+        let description = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
         description.uuid = UUID()
         description.isPrivate = true
         description.muteBehavior = .unmuted
