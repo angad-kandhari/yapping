@@ -88,7 +88,8 @@ final class ProcessTapSource {
         status = AudioDeviceCreateIOProcIDWithBlock(&procID, aggregateID, queue) {
             [weak self] _, inInputData, _, _, _ in
             guard let self, let format = self.tapFormat else { return }
-            // The HAL owns this memory only for the callback; deep-copy
+            // The HAL owns this memory only for the callback; deep-copy by
+            // raw AudioBuffer so interleaved and deinterleaved both work
             guard let source = AVAudioPCMBuffer(
                 pcmFormat: format,
                 bufferListNoCopy: inInputData, deallocator: nil),
@@ -97,11 +98,12 @@ final class ProcessTapSource {
                     pcmFormat: format, frameCapacity: source.frameLength)
             else { return }
             copy.frameLength = source.frameLength
-            let channels = Int(format.channelCount)
-            if let src = source.floatChannelData, let dst = copy.floatChannelData {
-                for ch in 0..<channels {
-                    dst[ch].update(from: src[ch], count: Int(source.frameLength))
-                }
+            let src = UnsafeMutableAudioBufferListPointer(
+                UnsafeMutablePointer(mutating: source.audioBufferList))
+            let dst = UnsafeMutableAudioBufferListPointer(copy.mutableAudioBufferList)
+            for (s, d) in zip(src, dst) {
+                guard let sData = s.mData, let dData = d.mData else { continue }
+                memcpy(dData, sData, Int(min(s.mDataByteSize, d.mDataByteSize)))
             }
             self.continuation?.yield(copy)
         }

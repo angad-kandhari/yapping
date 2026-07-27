@@ -71,12 +71,22 @@ final class ListenController {
                     }
                 }
 
-                // Tap buffers, converted to the analyzer's format
+                // Mark active BEFORE the pump starts: buffers arrive within
+                // milliseconds and must never race the flag
+                active = true
+
+                // Tap buffers, converted to the analyzer's format. The loop
+                // ends when source.stop() finishes the stream.
                 let buffers = try source.start()
                 pumpTask = Task { [weak self] in
                     var converter: AVAudioConverter?
+                    var received = 0
                     for await buffer in buffers {
-                        guard let self, self.active else { break }
+                        guard let self else { break }
+                        received += 1
+                        if received == 1 {
+                            await MainActor.run { self.model.statusLine = "Listening..." }
+                        }
                         if converter == nil {
                             converter = AVAudioConverter(
                                 from: buffer.format, to: analyzerFormat)
@@ -89,12 +99,25 @@ final class ListenController {
                     }
                 }
 
+                // Silent-failure alarm: a healthy tap delivers buffers
+                // continuously, even during silence
+                Task { [weak self] in
+                    try? await Task.sleep(for: .seconds(5))
+                    guard let self, self.active else { return }
+                    await MainActor.run {
+                        if self.model.finalized.isEmpty && self.model.volatileTail.isEmpty
+                            && self.model.statusLine != "Listening..." {
+                            self.model.statusLine = "No audio detected. Check System Settings, Privacy & Security, System Audio Recording, then toggle Listen again."
+                        }
+                    }
+                }
+
                 await MainActor.run {
-                    self.active = true
-                    self.model.statusLine = "Listening..."
+                    self.model.statusLine = "Starting..."
                     self.onStateChange?(true)
                 }
             } catch {
+                active = false
                 source.stop()
                 await MainActor.run {
                     self.model.running = false
