@@ -97,7 +97,7 @@
       <a href="#app">the app</a>
       <a href="#how">how</a>
       <a href="#faq">faq</a>
-      <a class="gh-mark" href="https://github.com/angad-kandhari/yapping" aria-label="yapping on GitHub"><svg width="20" height="20"><use href="#octo"></use></svg></a>
+      <a class="gh-mark" data-win="https://github.com/angad-kandhari/yapping-windows" href="https://github.com/angad-kandhari/yapping" aria-label="yapping on GitHub"><svg width="20" height="20"><use href="#octo"></use></svg></a>
       <a class="btn keep" href="#download" style="padding: 9px 20px; font-size: 12px;">Download</a>
     </div>
   </nav>
@@ -110,7 +110,7 @@
       <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center;">
         <a class="btn" href="https://github.com/angad-kandhari/yapping/releases/latest/download/Yapping.dmg" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="16" height="16" style="margin-top: -2px;"><use href="#apl"></use></svg>Download for macOS</a>
         <a class="btn" href="https://github.com/angad-kandhari/yapping-windows/releases/latest/download/Yapping-Setup.exe" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="15" height="15" style="margin-top: -1px;"><use href="#win"></use></svg>Download for Windows</a>
-        <a class="ghost" href="https://github.com/angad-kandhari/yapping" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="17" height="17" style="color: #F4F4F2;"><use href="#octo"></use></svg>Read the source</a>
+        <a class="ghost" data-win="https://github.com/angad-kandhari/yapping-windows" href="https://github.com/angad-kandhari/yapping" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="17" height="17" style="color: #F4F4F2;"><use href="#octo"></use></svg>Read the source</a>
       </div>
       <span class="mono" style="font-size: 11px; color: #5C5C5A; letter-spacing: 0.04em;">the invoices are draggable. the prices are not.</span>
     </div>
@@ -302,7 +302,7 @@
       </details>
       <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
         <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700;"><span>Is the Windows app the same?</span><span class="yap-x" style="font-size: 22px; color: var(--yap-accent);">+</span></summary>
-        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.5; color: #9B9B98; max-width: 700px;">It's a fresh beta, rebuilt in Rust around the same idea. Hold Ctrl+Win, speak, release; the raw transcript pastes at your cursor. Transcription runs fully on-device (the speech model downloads once on first run, about 640 MB). The recording overlay, cleanup, per-app styles, and history from the Mac app are on the way. The installer isn't code-signed yet, so SmartScreen will warn once: choose More info, then Run anyway, or read the source first.</p>
+        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.5; color: #9B9B98; max-width: 700px;">It's a fresh beta, rebuilt in Rust around the same idea. Hold Ctrl+Win, speak, release; the raw transcript pastes at your cursor. Transcription runs fully on-device (the speech model downloads once on first run, about 640 MB). The recording overlay, cleanup, per-app styles, and history from the Mac app are on the way. The installer isn't code-signed yet, so SmartScreen will warn once: choose More info, then Run anyway, or <a href="https://github.com/angad-kandhari/yapping-windows" style="color: #F4F4F2; text-decoration: underline;">read the source</a> first.</p>
       </details>
       <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
         <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700;"><span>Is my audio or text stored anywhere?</span><span class="yap-x" style="font-size: 22px; color: var(--yap-accent);">+</span></summary>
@@ -334,9 +334,11 @@
       <svg width="22" height="22"><use href="#lic"></use></svg>
       <span style="color: #F4F4F2; font-weight: 700;">yapping</span>
     </div>
-    <div style="display: flex; align-items: center; gap: 24px;">
-      <a class="gh-mark" href="https://github.com/angad-kandhari/yapping" aria-label="yapping on GitHub"><svg width="18" height="18"><use href="#octo"></use></svg></a>
-      <a href="https://github.com/angad-kandhari/yapping/blob/main/LICENSE" style="color: #9B9B98;">Apache 2.0 license</a>
+    <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
+      <a class="gh-mark" data-win="https://github.com/angad-kandhari/yapping-windows" href="https://github.com/angad-kandhari/yapping" aria-label="yapping on GitHub"><svg width="18" height="18"><use href="#octo"></use></svg></a>
+      <a href="https://github.com/angad-kandhari/yapping" style="color: #9B9B98;">macOS source</a>
+      <a href="https://github.com/angad-kandhari/yapping-windows" style="color: #9B9B98;">Windows source</a>
+      <a data-win="https://github.com/angad-kandhari/yapping-windows/blob/main/LICENSE" href="https://github.com/angad-kandhari/yapping/blob/main/LICENSE" style="color: #9B9B98;">Apache 2.0 license</a>
     </div>
     <span>Built by <a href="https://github.com/angad-kandhari" style="color: #F4F4F2;">Angad Kandhari</a></span>
   </footer>
@@ -420,6 +422,16 @@
   key.addEventListener("pointerdown", function () { setHeld(true); });
   key.addEventListener("pointerup", function () { setHeld(false); });
   key.addEventListener("pointerleave", function () { setHeld(false); });
+
+  // Source links point at the repo matching the visitor's platform;
+  // without JS they stay on the macOS repo, and the footer always
+  // lists both.
+  if (/Windows/i.test(navigator.userAgent)) {
+    var srcLinks = document.querySelectorAll("a[data-win]");
+    for (var s = 0; s < srcLinks.length; s++) {
+      srcLinks[s].href = srcLinks[s].getAttribute("data-win");
+    }
+  }
 </script>
 </body>
 </html>
