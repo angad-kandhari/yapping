@@ -10,8 +10,10 @@ struct Release: Identifiable {
     let url: URL?
 }
 
-/// Update lookups against GitHub releases. Runs only when the user opens
-/// the Updates window, plus one quiet check at launch. No other phoning home.
+/// Update lookups against GitHub releases. Runs when the user opens the
+/// Updates window, plus a quiet check at launch and once a day after (menu
+/// bar apps run for weeks; a launch-only check goes stale). The GitHub
+/// releases API is the only thing ever contacted.
 enum UpdateCheck {
     static let releasesPage = URL(
         string: "https://github.com/angad-kandhari/yapping/releases")!
@@ -49,15 +51,50 @@ enum UpdateCheck {
         }
     }
 
-    /// Quiet launch check: notify only when something newer exists.
-    static func quietCheck() {
-        Task {
-            guard let newer = await newerReleases(), let latest = newer.first else { return }
-            await MainActor.run {
-                AppDelegate.notify(
-                    "Yapping \(latest.version) is available",
-                    body: "Open Check for Updates in the menu to see what's new.")
+    // Per-version bookkeeping so the user is nagged exactly once: the
+    // system notification fires once per new version, and the menu bar dot
+    // stays until they open the Updates window for that version.
+    private static let seenKey = "updateSeenVersion"
+    private static let notifiedKey = "updateNotifiedVersion"
+    private static var latestFound: String?
+    private static var timer: Timer?
+
+    /// Quiet checks at launch and daily. `onBadge` runs on the main thread
+    /// with true while a newer release exists that the user has not looked
+    /// at yet; it drives the dots on the menu bar icon and menu item.
+    static func startQuietChecks(onBadge: @escaping (Bool) -> Void) {
+        let check = {
+            Task {
+                guard let newer = await newerReleases() else { return }
+                await MainActor.run {
+                    guard let latest = newer.first else {
+                        // Up to date (they installed the update): clear all
+                        latestFound = nil
+                        onBadge(false)
+                        return
+                    }
+                    latestFound = latest.version
+                    let defaults = UserDefaults.standard
+                    onBadge(defaults.string(forKey: seenKey) != latest.version)
+                    if defaults.string(forKey: notifiedKey) != latest.version {
+                        defaults.set(latest.version, forKey: notifiedKey)
+                        AppDelegate.notify(
+                            "Yapping \(latest.version) is available",
+                            body: "Open Check for Updates in the menu to see what's new.")
+                    }
+                }
             }
+        }
+        check()
+        timer = Timer.scheduledTimer(withTimeInterval: 24 * 3600, repeats: true) { _ in
+            check()
+        }
+    }
+
+    /// The user opened the Updates window; stop badging this version.
+    static func markSeen() {
+        if let latestFound {
+            UserDefaults.standard.set(latestFound, forKey: seenKey)
         }
     }
 }

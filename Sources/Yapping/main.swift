@@ -1,11 +1,15 @@
 import AppKit
 
+// Logging first so everything after -- including a crash -- leaves a trace
+Log.start()
+Log.installCrashHandler()
+
 // Refuse to double-run: two instances would both grab the fn key and mic
 // (e.g. launchd starting the agent while a manually launched copy runs)
 let others = NSRunningApplication.runningApplications(withBundleIdentifier: "com.angad.dictate")
     .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
 if !others.isEmpty {
-    NSLog("another yapping instance is already running, exiting")
+    Log.info("another yapping instance is already running, exiting")
     exit(0)
 }
 

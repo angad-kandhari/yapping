@@ -59,7 +59,7 @@ final class FnKeyMonitor {
             )
             if created == nil {
                 if attempts == 0 {
-                    NSLog("waiting for Input Monitoring permission: enable 'Yapping' under System Settings -> Privacy & Security -> Input Monitoring, then relaunch")
+                    Log.info("waiting for Input Monitoring permission: enable 'Yapping' under System Settings -> Privacy & Security -> Input Monitoring, then relaunch")
                     _ = CGRequestListenEventAccess()
                 }
                 attempts += 1

@@ -233,6 +233,13 @@ private struct AboutSettings: View {
             Link("github.com/angad-kandhari/yapping",
                  destination: URL(string: "https://github.com/angad-kandhari/yapping")!)
                 .foregroundStyle(Brand.accent)
+            VStack(spacing: 4) {
+                Button("Reveal Log File") { Log.reveal() }
+                Text("Attach it when reporting a bug.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

@@ -32,7 +32,12 @@ final class StatusItem {
     private var timer: Timer?
 
     private var listenItem: NSMenuItem?
+    private var updatesItem: NSMenuItem?
+    private var updateAvailable = false
     private var dropHandler: (([URL]) -> Void)?
+
+    // Brand.accent (#FF5A1F) as NSColor, for the menu item dot
+    private static let accent = NSColor(red: 1.0, green: 0.353, blue: 0.122, alpha: 1)
 
     init(
         onSettings: @escaping () -> Void,
@@ -69,7 +74,7 @@ final class StatusItem {
         listenItem = add("Listen to System Audio", #selector(MenuTarget.listen), "l")
         menu.addItem(.separator())
         _ = add("Setup Assistant", #selector(MenuTarget.setup))
-        _ = add("Check for Updates", #selector(MenuTarget.updates))
+        updatesItem = add("Check for Updates", #selector(MenuTarget.updates))
         menu.addItem(.separator())
         _ = add("Quit Yapping", #selector(MenuTarget.quit), "q")
         item.menu = menu
@@ -78,6 +83,31 @@ final class StatusItem {
         // 20 fps while animating; skips work once the logo settles at rest
         timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             self?.tick()
+        }
+    }
+
+    /// Badge the icon and the Check for Updates item while a newer release
+    /// exists; cleared once the user opens the Updates window.
+    func setUpdateAvailable(_ available: Bool) {
+        DispatchQueue.main.async {
+            guard self.updateAvailable != available else { return }
+            self.updateAvailable = available
+            if let item = self.updatesItem {
+                if available {
+                    let title = NSMutableAttributedString(
+                        string: "\u{25CF} ",
+                        attributes: [.foregroundColor: Self.accent,
+                                     .font: NSFont.menuFont(ofSize: 0)])
+                    title.append(NSAttributedString(
+                        string: "Check for Updates",
+                        attributes: [.foregroundColor: NSColor.labelColor,
+                                     .font: NSFont.menuFont(ofSize: 0)]))
+                    item.attributedTitle = title
+                } else {
+                    item.attributedTitle = nil
+                }
+            }
+            self.redraw()
         }
     }
 
@@ -154,6 +184,7 @@ final class StatusItem {
 
     private func redraw() {
         let heights = displayed
+        let update = updateAvailable
         let alpha: CGFloat = state == .processing ? 0.4 : 1.0
         let size = NSSize(width: Self.canvas, height: Self.canvas)
         let image = NSImage(size: size, flipped: false) { _ in
@@ -168,6 +199,14 @@ final class StatusItem {
                 )
                 NSBezierPath(roundedRect: rect, xRadius: Self.barWidth / 2,
                              yRadius: Self.barWidth / 2).fill()
+            }
+            // Update-available dot, top-right, App Store style. Template
+            // rendering means it tints with the menu bar like the bars do.
+            if update {
+                let d: CGFloat = 4.5
+                NSColor.black.setFill()
+                NSBezierPath(ovalIn: NSRect(
+                    x: Self.canvas - d, y: Self.canvas - d, width: d, height: d)).fill()
             }
             return true
         }

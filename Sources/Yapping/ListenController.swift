@@ -67,7 +67,7 @@ final class ListenController {
                             }
                         }
                     } catch {
-                        NSLog("listen results error: \(error)")
+                        Log.error("listen results error: \(error)")
                     }
                 }
 

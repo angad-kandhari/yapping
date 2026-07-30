@@ -60,7 +60,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.listenWindow.show()
             },
             onSetup: { [weak self] in self?.onboardingWindow.show() },
-            onUpdates: { [weak self] in self?.updatesWindow.show() },
+            onUpdates: { [weak self] in
+                UpdateCheck.markSeen()
+                self?.statusItem.setUpdateAvailable(false)
+                self?.updatesWindow.show()
+            },
             onQuit: { [weak self] in
                 self?.fnMonitor.stop()
                 self?.listenController.stop()
@@ -106,6 +110,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.hud.pushLevel(level)
             self?.voiceActivity(level)
         }
+        // AirPods (or any device) connecting mid-dictation: finish the
+        // session gracefully with what was said instead of crashing on the
+        // dead audio graph
+        transcriber.onDeviceChange = { [weak self] in
+            guard let self, self.busy else { return }
+            Log.info("input device changed mid-session; finishing dictation")
+            // fn may still be physically held; swallow that release so it
+            // does not read as a new gesture. Hands-free holds no key.
+            if !self.handsFree { self.ignoreNextRelease = true }
+            self.endSession(cancelled: false)
+        }
         fnMonitor.onEscape = { [weak self] in
             DispatchQueue.main.async {
                 guard let self, self.handsFree else { return }
@@ -129,9 +144,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task {
             try? await transcriber.ensureModel()
             await Cleanup.warmUp()
-            NSLog("yapping ready: hold the globe/fn key to talk")
+            Log.info("yapping ready: hold the globe/fn key to talk")
         }
-        UpdateCheck.quietCheck()
+        UpdateCheck.startQuietChecks { [weak self] available in
+            self?.statusItem.setUpdateAvailable(available)
+        }
     }
 
     /// Silence auto-stop for hands-free sessions (opt-in): about 2.5s of
@@ -173,14 +190,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func requestPermissions() {
         // Microphone prompt up front, not mid-first-dictation
         AVCaptureDevice.requestAccess(for: .audio) { granted in
-            if !granted { NSLog("microphone permission denied") }
+            if !granted { Log.error("microphone permission denied") }
         }
         // Some SpeechAnalyzer paths still gate on this; harmless if not
         SFSpeechRecognizer.requestAuthorization { _ in }
         // Accessibility is needed to post the synthetic cmd-V
         let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
         if !AXIsProcessTrustedWithOptions(options) {
-            NSLog("waiting for Accessibility permission (needed to paste)")
+            Log.info("waiting for Accessibility permission (needed to paste)")
         }
     }
 
@@ -215,7 +232,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 try await transcriber.start()
                 return true
             } catch {
-                NSLog("could not start recording: \(error)")
+                Log.error("could not start recording: \(error)")
                 return false
             }
         }
@@ -363,7 +380,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     raw: text, cleaned: output,
                     appName: self.targetApp?.localizedName ?? "Unknown")
             } catch {
-                NSLog("dictation error: \(error)")
+                Log.error("dictation error: \(error)")
                 Sound.play("Basso")
                 Self.notify("Dictation failed", body: "\(error.localizedDescription)")
             }

@@ -103,10 +103,10 @@ enum Cleanup {
             if case .available = SystemLanguageModel.default.availability {
                 let session = LanguageModelSession(instructions: prompt)
                 session.prewarm()
-                NSLog("apple foundation model warm")
+                Log.info("apple foundation model warm")
                 return
             }
-            NSLog("apple intelligence unavailable; will fall back to ollama")
+            Log.info("apple intelligence unavailable; will fall back to ollama")
             await warmOllama()
         case "custom":
             break  // nothing to warm; the endpoint manages its own models
@@ -142,7 +142,7 @@ enum Cleanup {
             return response.content
         } catch {
             // Includes safety refusals; the guards and fallbacks handle it
-            NSLog("apple model cleanup failed: \(error)")
+            Log.error("apple model cleanup failed: \(error)")
             return nil
         }
     }
@@ -237,7 +237,7 @@ enum Cleanup {
 
     private static func warmOllama() async {
         guard await ollamaUp() else {
-            NSLog("ollama not running; cleanup will fall back to raw transcripts")
+            Log.info("ollama not running; cleanup will fall back to raw transcripts")
             return
         }
         let body: [String: Any] = [
@@ -251,6 +251,6 @@ enum Cleanup {
         request.httpBody = data
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         _ = try? await URLSession.shared.data(for: request)
-        NSLog("ollama '%@' warm", model)
+        Log.info("ollama '\(model)' warm")
     }
 }
