@@ -8,6 +8,8 @@ struct Release: Identifiable {
     let notes: String
     let publishedAt: Date?
     let url: URL?
+    /// The Yapping-vX.Y.Z.zip asset, what the in-app updater installs.
+    let zipURL: URL?
 }
 
 /// Update lookups against GitHub releases. Runs when the user opens the
@@ -40,6 +42,8 @@ enum UpdateCheck {
             let version = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
             guard version.compare(current, options: .numeric) == .orderedDescending
             else { return nil }
+            let assets = item["assets"] as? [[String: Any]] ?? []
+            let zip = assets.first { ($0["name"] as? String)?.hasSuffix(".zip") == true }
             return Release(
                 id: tag,
                 version: version,
@@ -47,7 +51,8 @@ enum UpdateCheck {
                 notes: item["body"] as? String ?? "",
                 publishedAt: (item["published_at"] as? String)
                     .flatMap { dateParser.date(from: $0) },
-                url: (item["html_url"] as? String).flatMap { URL(string: $0) })
+                url: (item["html_url"] as? String).flatMap { URL(string: $0) },
+                zipURL: (zip?["browser_download_url"] as? String).flatMap { URL(string: $0) })
         }
     }
 

@@ -9,6 +9,8 @@ struct UpdatesView: View {
         case checking
         case upToDate
         case behind([Release])
+        case updating(String)
+        case updateFailed(String, [Release])
         case failed
     }
 
@@ -64,11 +66,12 @@ struct UpdatesView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Button("Download") {
-                        NSWorkspace.shared.open(
-                            releases.first?.url ?? UpdateCheck.releasesPage)
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Button("Update Now") { install(releases) }
+                            .buttonStyle(.borderedProminent)
+                        Text("Downloads, verifies, and relaunches.")
+                            .font(.caption2).foregroundStyle(.tertiary)
                     }
-                    .buttonStyle(.borderedProminent)
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
@@ -102,6 +105,35 @@ struct UpdatesView: View {
                 }
             }
 
+        case .updating(let status):
+            VStack(spacing: 12) {
+                ProgressView()
+                Text(status).foregroundStyle(.secondary)
+                Text("The app restarts itself when this finishes.")
+                    .font(.caption).foregroundStyle(.tertiary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+        case .updateFailed(let message, let releases):
+            VStack(spacing: 12) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.secondary)
+                Text("Could not update").font(.headline)
+                Text(message)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 380)
+                HStack(spacing: 12) {
+                    Button("Try Again") { install(releases) }
+                    Button("Download from GitHub") {
+                        NSWorkspace.shared.open(
+                            releases.first?.url ?? UpdateCheck.releasesPage)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
         case .failed:
             VStack(spacing: 12) {
                 Image(systemName: "wifi.exclamationmark")
@@ -116,6 +148,22 @@ struct UpdatesView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func install(_ releases: [Release]) {
+        guard let latest = releases.first else { return }
+        state = .updating("Preparing...")
+        Task {
+            do {
+                try await Updater.install(latest) { status in
+                    state = .updating(status)
+                }
+            } catch {
+                await MainActor.run {
+                    state = .updateFailed(error.localizedDescription, releases)
+                }
+            }
         }
     }
 
