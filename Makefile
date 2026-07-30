@@ -1,8 +1,13 @@
 APP      := .build/Yapping.app
 BINARY   := .build/arm64-apple-macosx/release/yapping
+# Developer ID first (notarizable, downloads pass Gatekeeper); fall back to
+# Apple Development for machines that only have the free-tier cert
+IDENTITY := $(shell security find-identity -v -p codesigning | grep -o '"Developer ID Application[^"]*"' | head -1)
+ifeq ($(IDENTITY),)
 IDENTITY := $(shell security find-identity -v -p codesigning | grep -o '"Apple Development[^"]*"' | head -1)
+endif
 
-.PHONY: build bundle sign install run clean
+.PHONY: build bundle sign notarize install run clean
 
 build:
 	swift build -c release --arch arm64
@@ -14,14 +19,26 @@ bundle: build
 	cp Support/Info.plist $(APP)/Contents/
 	cp Support/AppIcon.icns $(APP)/Contents/Resources/
 
-# A stable (non ad-hoc) signature keeps TCC grants valid across rebuilds
+# A stable (non ad-hoc) signature keeps TCC grants valid across rebuilds.
+# Hardened runtime + timestamp + entitlements are what notarization demands;
+# they are harmless for local dev builds too.
 sign: bundle
 ifneq ($(IDENTITY),)
-	codesign --force --sign $(IDENTITY) $(APP)
+	codesign --force --options runtime --timestamp \
+		--entitlements Support/Yapping.entitlements --sign $(IDENTITY) $(APP)
 else
-	@echo "no Apple Development identity found, signing ad-hoc (permissions reset each rebuild)"
+	@echo "no signing identity found, signing ad-hoc (permissions reset each rebuild)"
 	codesign --force --sign - $(APP)
 endif
+
+# One-time setup: 'xcrun notarytool store-credentials yapping' with an
+# app-specific password. Ticket is stapled so Gatekeeper passes offline.
+notarize: sign
+	ditto -c -k --keepParent $(APP) .build/Yapping-notarize.zip
+	xcrun notarytool submit .build/Yapping-notarize.zip \
+		--keychain-profile yapping --wait
+	xcrun stapler staple $(APP)
+	rm -f .build/Yapping-notarize.zip
 
 install: sign
 	pkill -x yapping || true
@@ -45,7 +62,15 @@ VERSION := $(shell /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString"
 dmg: sign
 	bash scripts/make-dmg.sh .build/Yapping.dmg
 
-release: sign dmg
+# Notarize before packaging so the dmg and zip carry the stapled app.
+# (Not via the dmg target: its sign dependency re-bundles, wiping the staple.)
+release: sign
+ifneq (,$(findstring Developer ID,$(IDENTITY)))
+	$(MAKE) notarize
+else
+	@echo "no Developer ID identity; releasing without notarization"
+endif
+	bash scripts/make-dmg.sh .build/Yapping.dmg
 	ditto -c -k --keepParent $(APP) .build/Yapping-v$(VERSION).zip
 	git tag v$(VERSION)
 	git push origin v$(VERSION)

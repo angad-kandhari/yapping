@@ -43,7 +43,8 @@ APPLESCRIPT
 sync
 hdiutil detach "$MOUNT" -quiet
 hdiutil convert "$RW" -format UDZO -imagekey zlib-level=9 -o "$OUT" -ov -quiet
-IDENTITY=$(security find-identity -v -p codesigning | grep -o '"Apple Development[^"]*"' | head -1 | tr -d '"')
+IDENTITY=$(security find-identity -v -p codesigning | grep -o '"Developer ID Application[^"]*"' | head -1 | tr -d '"')
+[ -z "$IDENTITY" ] && IDENTITY=$(security find-identity -v -p codesigning | grep -o '"Apple Development[^"]*"' | head -1 | tr -d '"')
 if [ -n "$IDENTITY" ]; then
   codesign --force --sign "$IDENTITY" "$OUT"
 else
