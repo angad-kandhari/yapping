@@ -200,21 +200,28 @@ final class StatusItem {
                 NSBezierPath(roundedRect: rect, xRadius: Self.barWidth / 2,
                              yRadius: Self.barWidth / 2).fill()
             }
-            // Update-available dot, top-right, App Store style. Template
-            // rendering means it tints with the menu bar like the bars do.
-            if update {
-                let d: CGFloat = 4.5
-                NSColor.black.setFill()
-                NSBezierPath(ovalIn: NSRect(
-                    x: Self.canvas - d, y: Self.canvas - d, width: d, height: d)).fill()
-            }
             return true
         }
         // Template rendering: macOS tints it for light/dark menu bars
         image.isTemplate = true
         item.button?.image = image
-        item.button?.title = ""
+        // Update available: a green up arrow beside the logo. It rides as
+        // the button title because template images cannot carry color.
+        if update {
+            item.button?.attributedTitle = Self.updateArrow
+            item.button?.imagePosition = .imageLeft
+        } else {
+            item.button?.title = ""
+            item.button?.imagePosition = .imageOnly
+        }
     }
+
+    private static let updateArrow = NSAttributedString(
+        string: "\u{2191}",
+        attributes: [
+            .foregroundColor: NSColor.systemGreen,
+            .font: NSFont.systemFont(ofSize: 12, weight: .bold),
+        ])
 }
 
 private final class MenuTarget: NSObject {
