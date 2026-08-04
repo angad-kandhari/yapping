@@ -153,8 +153,24 @@ enum Cleanup {
         return chunks
     }
 
-    /// Ollama reachability (used by the setup assistant).
+    /// "Is X running?"-style hint naming the provider actually configured;
+    /// error copy must never blame Ollama when the user chose Apple.
+    static var providerHint: String {
+        switch ConfigStore.shared.cleanupProvider {
+        case "apple": return "Is Apple Intelligence enabled?"
+        case "custom": return "Is your custom endpoint reachable?"
+        default: return "Is Ollama running?"
+        }
+    }
+
+    /// Ollama reachability (used by the setup assistant and settings).
     static func reachable() async -> Bool { await ollamaUp() }
+
+    /// Whether the on-device Apple model can run right now.
+    static var appleAvailable: Bool {
+        if case .available = SystemLanguageModel.default.availability { return true }
+        return false
+    }
 
     /// Warm whichever provider is configured so the first polish is instant.
     static func warmUp() async {
@@ -229,8 +245,10 @@ enum Cleanup {
         request.httpBody = data
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        guard let (responseData, response) = try? await URLSession.shared.data(for: request),
-              (response as? HTTPURLResponse)?.statusCode == 200,
+        let result = try? await URLSession.shared.data(for: request)
+        let ok = (result?.1 as? HTTPURLResponse)?.statusCode == 200
+        NetLog.shared.record(url, purpose: "transcript cleanup (Ollama)", ok: ok)
+        guard ok, let responseData = result?.0,
               let json = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
               let message = json["message"] as? [String: Any],
               let content = message["content"] as? String else { return nil }
@@ -264,8 +282,10 @@ enum Cleanup {
             request.setValue("Bearer \(config.customKey)", forHTTPHeaderField: "Authorization")
         }
 
-        guard let (responseData, response) = try? await URLSession.shared.data(for: request),
-              (response as? HTTPURLResponse)?.statusCode == 200,
+        let result = try? await URLSession.shared.data(for: request)
+        let ok = (result?.1 as? HTTPURLResponse)?.statusCode == 200
+        NetLog.shared.record(url, purpose: "transcript cleanup (custom endpoint)", ok: ok)
+        guard ok, let responseData = result?.0,
               let json = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
               let choices = json["choices"] as? [[String: Any]],
               let message = choices.first?["message"] as? [String: Any],
@@ -292,7 +312,9 @@ enum Cleanup {
         var request = URLRequest(url: url, timeoutInterval: 1.5)
         request.httpMethod = "GET"
         let result = try? await URLSession.shared.data(for: request)
-        return (result?.1 as? HTTPURLResponse)?.statusCode == 200
+        let ok = (result?.1 as? HTTPURLResponse)?.statusCode == 200
+        NetLog.shared.record(url, purpose: "provider reachability", ok: ok)
+        return ok
     }
 
     private static func warmOllama() async {
@@ -310,7 +332,10 @@ enum Cleanup {
         request.httpMethod = "POST"
         request.httpBody = data
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        _ = try? await URLSession.shared.data(for: request)
+        let warm = try? await URLSession.shared.data(for: request)
+        NetLog.shared.record(
+            url, purpose: "model warm-up",
+            ok: (warm?.1 as? HTTPURLResponse)?.statusCode == 200)
         Log.info("ollama '\(model)' warm")
     }
 }

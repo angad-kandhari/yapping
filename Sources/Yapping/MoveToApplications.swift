@@ -14,13 +14,23 @@ enum MoveToApplications {
         guard !path.hasPrefix("/Applications/"),
               !path.contains("/.build/") else { return }
 
+        // Respect a "stop asking": declining forever should be one click
+        let suppressKey = "moveToApplicationsSuppressed"
+        guard !UserDefaults.standard.bool(forKey: suppressKey) else { return }
+
         let alert = NSAlert()
         alert.messageText = "Move yapping to Applications?"
         alert.informativeText = "Yapping works best from the Applications folder: launch at login and permissions depend on a stable home. This copies the app there and relaunches it."
         alert.addButton(withTitle: "Move to Applications")
         alert.addButton(withTitle: "Not Now")
+        alert.showsSuppressionButton = true
+        alert.suppressionButton?.title = "Don't ask again"
         NSApp.activate(ignoringOtherApps: true)
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let response = alert.runModal()
+        if alert.suppressionButton?.state == .on {
+            UserDefaults.standard.set(true, forKey: suppressKey)
+        }
+        guard response == .alertFirstButtonReturn else { return }
 
         do {
             let fm = FileManager.default

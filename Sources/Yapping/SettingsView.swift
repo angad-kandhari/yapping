@@ -6,12 +6,14 @@ struct SettingsView: View {
 
     var body: some View {
         BrandChrome(title: "settings") {
-            BrandTabs(tabs: ["General", "Dictionary", "Styles", "About"], selection: $tab)
+            BrandTabs(tabs: ["General", "Cleanup", "Dictionary", "Styles", "About"],
+                      selection: $tab)
             Group {
                 switch tab {
                 case 0: GeneralSettings()
-                case 1: DictionarySettings()
-                case 2: StylesSettings()
+                case 1: CleanupSettings()
+                case 2: DictionarySettings()
+                case 3: StylesSettings()
                 default: AboutSettings()
                 }
             }
@@ -45,29 +47,6 @@ private struct GeneralSettings: View {
                     }
                 }
                 Text("Pinning the built-in mic keeps dictation sharp even when AirPods connect; their mic records at lower quality. An unplugged pinned mic quietly falls back to the default.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section("Cleanup") {
-                Toggle("Clean up transcripts with a local model", isOn: $config.cleanupEnabled)
-                Picker("Provider", selection: $config.cleanupProvider) {
-                    Text("Apple Intelligence (built in)").tag("apple")
-                    Text("Ollama").tag("ollama")
-                    Text("Custom endpoint").tag("custom")
-                }
-                switch config.cleanupProvider {
-                case "ollama":
-                    TextField("Ollama model", text: $config.ollamaModel)
-                    TextField("Ollama host", text: $config.ollamaHost)
-                case "custom":
-                    TextField("Base URL (OpenAI compatible, e.g. http://localhost:1234/v1)",
-                              text: $config.customBaseURL)
-                    TextField("Model (optional)", text: $config.customModel)
-                    SecureField("API key (optional, stored locally)", text: $config.customKey)
-                default:
-                    Text("Apple's on-device model. Nothing to install; falls back to Ollama if Apple Intelligence is off.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Text("If the provider fails or over-edits, the raw transcript is used. Words are never lost.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Output") {
@@ -116,6 +95,73 @@ private struct GeneralSettings: View {
             if locales.isEmpty {
                 locales = [Locale(identifier: "en_US")]
             }
+        }
+    }
+}
+
+private struct CleanupSettings: View {
+    @ObservedObject var config = ConfigStore.shared
+    @State private var status: (label: String, good: Bool)?
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Clean up transcripts with a local model", isOn: $config.cleanupEnabled)
+                Text("If the provider fails or over-edits, the raw transcript is used. Words are never lost.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Provider") {
+                Picker("Provider", selection: $config.cleanupProvider) {
+                    Text("Apple Intelligence (built in)").tag("apple")
+                    Text("Ollama").tag("ollama")
+                    Text("Custom endpoint").tag("custom")
+                }
+                switch config.cleanupProvider {
+                case "ollama":
+                    TextField("Ollama model", text: $config.ollamaModel)
+                    TextField("Ollama host", text: $config.ollamaHost)
+                case "custom":
+                    TextField("Base URL (OpenAI compatible, e.g. http://localhost:1234/v1)",
+                              text: $config.customBaseURL)
+                    TextField("Model (optional)", text: $config.customModel)
+                    SecureField("API key (optional, stored locally)", text: $config.customKey)
+                default:
+                    Text("Apple's on-device model. Nothing to install; falls back to Ollama if Apple Intelligence is off.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if let status {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(status.good ? Color.green : Color.orange)
+                            .frame(width: 7, height: 7)
+                        Text(status.label)
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .disabled(!config.cleanupEnabled)
+        }
+        .formStyle(.grouped)
+        .task(id: "\(config.cleanupProvider)|\(config.ollamaHost)|\(config.cleanupEnabled)") {
+            await refreshStatus()
+        }
+    }
+
+    private func refreshStatus() async {
+        guard config.cleanupEnabled else { status = nil; return }
+        switch config.cleanupProvider {
+        case "apple":
+            let available = Cleanup.appleAvailable
+            status = (available
+                ? "Apple Intelligence is available"
+                : "Apple Intelligence is off; cleanup will try Ollama", available)
+        case "ollama":
+            let up = await Cleanup.reachable()
+            status = (up
+                ? "Ollama is reachable at \(config.ollamaHost)"
+                : "Ollama is not responding at \(config.ollamaHost)", up)
+        default:
+            status = ("Custom endpoints are checked at first use.", true)
         }
     }
 }
@@ -203,6 +249,7 @@ private struct DictionarySettings: View {
 
 private struct StylesSettings: View {
     @ObservedObject var config = ConfigStore.shared
+    @State private var styleToDelete: Style?
 
     var body: some View {
         Form {
@@ -225,7 +272,7 @@ private struct StylesSettings: View {
                             .frame(minHeight: 56)
                     }
                     Button(role: .destructive) {
-                        config.styles.removeAll { $0.id == style.id }
+                        styleToDelete = style
                     } label: { Text("Delete style") }
                 }
             }
@@ -234,33 +281,117 @@ private struct StylesSettings: View {
             }
         }
         .formStyle(.grouped)
+        .confirmationDialog(
+            "Delete the \"\(styleToDelete?.name ?? "")\" style? Its prompt is gone for good.",
+            isPresented: Binding(
+                get: { styleToDelete != nil },
+                set: { if !$0 { styleToDelete = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Delete Style", role: .destructive) {
+                if let style = styleToDelete {
+                    config.styles.removeAll { $0.id == style.id }
+                }
+                styleToDelete = nil
+            }
+        }
     }
 }
 
 private struct AboutSettings: View {
-    var body: some View {
-        VStack(spacing: 14) {
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .frame(width: 96, height: 96)
-            BrandLogo(height: 22)
-            Text("yapping").font(.system(size: 28, weight: .bold))
-            Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev")")
-                .foregroundStyle(.secondary)
-            Text("Hold the globe key. Yap. Done.\nEverything stays on your Mac.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-            Link("github.com/angad-kandhari/yapping",
-                 destination: URL(string: "https://github.com/angad-kandhari/yapping")!)
-                .foregroundStyle(Brand.accent)
-            VStack(spacing: 4) {
-                Button("Reveal Log File") { Log.reveal() }
-                Text("Attach it when reporting a bug.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.top, 8)
+    @ObservedObject var config = ConfigStore.shared
+    @ObservedObject var netLog = NetLog.shared
+
+    private var providerLine: String {
+        switch config.cleanupProvider {
+        case "apple":
+            return "Apple Intelligence, on this Mac (no network at all)"
+        case "custom":
+            return config.customBaseURL.isEmpty
+                ? "your custom endpoint (not configured yet)"
+                : config.customBaseURL
+        default:
+            return "\(config.ollamaHost) (your Ollama)"
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 72, height: 72)
+                Text("yapping").font(.system(size: 24, weight: .bold))
+                Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev")")
+                    .foregroundStyle(.secondary)
+                Text("Hold the globe key. Yap. Done.")
+                    .foregroundStyle(.secondary)
+                Link("github.com/angad-kandhari/yapping",
+                     destination: URL(string: "https://github.com/angad-kandhari/yapping")!)
+                    .foregroundStyle(Brand.accent)
+
+                privacyCard
+                    .padding(.top, 6)
+
+                VStack(spacing: 4) {
+                    Button("Reveal Log File") { Log.reveal() }
+                    Text("Attach it when reporting a bug.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.top, 6)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var privacyCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("PRIVACY")
+                .font(.caption.bold())
+                .foregroundStyle(Brand.accent)
+            Text("This app can reach exactly three things, and nothing else:")
+                .font(.callout)
+            bullet("Your cleanup provider: \(providerLine)")
+            bullet("api.github.com, once a day, to check for updates")
+            bullet("github.com, only when you click Update Now")
+            Text("Your voice and transcripts never leave this Mac. History and stats are saved with owner-only file permissions.")
+                .font(.caption).foregroundStyle(.secondary)
+
+            Divider()
+
+            Text("Connections this session")
+                .font(.caption.bold())
+            if netLog.events.isEmpty {
+                Text("None yet.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                ForEach(Array(netLog.events.prefix(8))) { event in
+                    HStack(spacing: 6) {
+                        Text(event.date, style: .time)
+                        Text(event.host).fontWeight(.medium)
+                        Text(event.purpose)
+                        if !event.ok {
+                            Text("failed").foregroundStyle(.red)
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 10).fill(.quaternary.opacity(0.4)))
+    }
+
+    private func bullet(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text("\u{2022}").foregroundStyle(Brand.accent)
+            Text(text)
+        }
+        .font(.callout)
     }
 }

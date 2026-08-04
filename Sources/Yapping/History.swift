@@ -59,6 +59,7 @@ final class HistoryStore: ObservableObject {
 struct HistoryView: View {
     @ObservedObject var store = HistoryStore.shared
     @State private var query = ""
+    @State private var confirmClear = false
 
     private var filtered: [HistoryEntry] {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -85,8 +86,11 @@ struct HistoryView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 TextField("Search dictations", text: $query)
-                    .textFieldStyle(.roundedBorder)
-                    .padding(.horizontal, 16)
+                    .textFieldStyle(.plain)
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 12)
+                    .background(Capsule().fill(Color.primary.opacity(0.07)))
+                    .padding(.horizontal, 20)
                     .padding(.bottom, 8)
                 if filtered.isEmpty {
                     Text("Nothing matches \"\(query)\".")
@@ -126,8 +130,14 @@ struct HistoryView: View {
                         .font(.caption).foregroundStyle(.tertiary)
                 }
                 Spacer()
-                Button("Clear history") { store.clear() }
+                Button("Clear history", role: .destructive) { confirmClear = true }
                     .disabled(store.entries.isEmpty)
+                    .confirmationDialog(
+                        "Delete all \(store.entries.count) dictations? This cannot be undone.",
+                        isPresented: $confirmClear, titleVisibility: .visible
+                    ) {
+                        Button("Clear History", role: .destructive) { store.clear() }
+                    }
             }
             .padding(12)
         }

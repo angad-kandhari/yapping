@@ -19,13 +19,18 @@ final class UtilityWindow<Content: View> {
             let hosting = NSHostingController(rootView: makeContent())
             let w = NSWindow(contentViewController: hosting)
             w.title = title
-            w.styleMask = [.titled, .closable, .miniaturizable, .fullSizeContentView]
+            w.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             // Brand chrome draws its own header; hide the system titlebar
             w.titlebarAppearsTransparent = true
             w.titleVisibility = .hidden
             w.isMovableByWindowBackground = true
             w.isReleasedWhenClosed = false
-            w.center()
+            // Remember size and position per window across launches
+            let autosave = "yapping-window-\(title)"
+            if !w.setFrameUsingName(autosave) {
+                w.center()
+            }
+            w.setFrameAutosaveName(autosave)
             window = w
         }
         NSApp.activate(ignoringOtherApps: true)

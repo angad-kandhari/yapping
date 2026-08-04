@@ -17,7 +17,7 @@ final class StatusItem {
     private static let canvas: CGFloat = 18
     private static let barWidth: CGFloat = 1.5
     private static let barCenters: [CGFloat] = [2.625, 5.25, 7.875, 10.5, 13.125, 15.75]
-    private static let restHeights: [CGFloat] = [3, 6.75, 11.25, 5.25, 8.25, 2.25]
+    private static let restHeights: [CGFloat] = Brand.barHeights.map { $0 * 0.75 }
     private static let minHeight: CGFloat = 2.25
     private static let maxHeight: CGFloat = 16
     /// RMS to height scaling: normal speech RMS is roughly 0.01-0.1.
@@ -35,9 +35,6 @@ final class StatusItem {
     private var updatesItem: NSMenuItem?
     private var updateAvailable = false
     private var dropHandler: (([URL]) -> Void)?
-
-    // Brand.accent (#FF5A1F) as NSColor, for the menu item dot
-    private static let accent = NSColor(red: 1.0, green: 0.353, blue: 0.122, alpha: 1)
 
     init(
         onSettings: @escaping () -> Void,
@@ -93,10 +90,11 @@ final class StatusItem {
             guard self.updateAvailable != available else { return }
             self.updateAvailable = available
             if let item = self.updatesItem {
+                // Same idiom as the menu bar badge: a green up arrow
                 if available {
                     let title = NSMutableAttributedString(
-                        string: "\u{25CF} ",
-                        attributes: [.foregroundColor: Self.accent,
+                        string: "\u{2191} ",
+                        attributes: [.foregroundColor: NSColor.systemGreen,
                                      .font: NSFont.menuFont(ofSize: 0)])
                     title.append(NSAttributedString(
                         string: "Check for Updates",
@@ -111,12 +109,24 @@ final class StatusItem {
         }
     }
 
-    /// Reflect Listen mode in the menu.
+    /// Reflect Listen mode in the menu: accent dot while capturing.
     func setListening(_ listening: Bool) {
         DispatchQueue.main.async {
-            self.listenItem?.title = listening
-                ? "\u{25CF} Stop Listening"
-                : "Listen to System Audio"
+            guard let item = self.listenItem else { return }
+            if listening {
+                let title = NSMutableAttributedString(
+                    string: "\u{25CF} ",
+                    attributes: [.foregroundColor: Brand.accentNSColor,
+                                 .font: NSFont.menuFont(ofSize: 0)])
+                title.append(NSAttributedString(
+                    string: "Stop Listening",
+                    attributes: [.foregroundColor: NSColor.labelColor,
+                                 .font: NSFont.menuFont(ofSize: 0)]))
+                item.attributedTitle = title
+            } else {
+                item.attributedTitle = nil
+                item.title = "Listen to System Audio"
+            }
         }
     }
 

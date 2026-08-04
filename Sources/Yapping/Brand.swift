@@ -6,8 +6,11 @@ import SwiftUI
 /// recurring motif, lowercase headers.
 enum Brand {
     static let accent = Color(red: 1.0, green: 0.353, blue: 0.122)  // #FF5A1F
+    /// Same accent for AppKit surfaces (menu bar, panels). One source only.
+    static let accentNSColor = NSColor(red: 1.0, green: 0.353, blue: 0.122, alpha: 1)
 
-    /// Logo bar heights on the 24-grid, shared with the menu bar and HUD.
+    /// Logo bar heights on the 24-grid; the menu bar and HUD scale these
+    /// rather than keeping their own copies.
     static let barHeights: [CGFloat] = [4, 9, 15, 7, 11, 3]
 }
 

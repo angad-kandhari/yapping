@@ -88,7 +88,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onboardingWindow.show()
         }
 
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { granted, _ in
+            if !granted {
+                Log.info("notifications denied; failures will surface as sounds only")
+            }
+        }
 
         // The HUD only appears while talking; hide it if everything it can
         // show gets turned off mid-hold
@@ -145,6 +149,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async { self?.cancelled = true }
         }
         fnMonitor.start()
+
+        StatsStore.shared.backfillIfNeeded(from: HistoryStore.shared.entries)
 
         Task {
             try? await transcriber.ensureModel()
@@ -216,6 +222,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ignoreNextRelease = true
             lastVoiceAt = Date()
             statusItem.setState(.recording, detail: "hands-free")
+            hud.setStyleChip("hands-free")
             Sound.play("Hero")
             return
         }
@@ -259,7 +266,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.setState(.recording, detail: activeStyle?.name)
         let config = ConfigStore.shared
         if config.hudEnabled || config.livePreview {
-            hud.show(bars: config.hudEnabled)
+            hud.begin(
+                style: activeStyle?.name, startedAt: pressedAt, maxHold: maxHold,
+                showBars: config.hudEnabled, showText: config.livePreview)
         }
         Sound.play("Pop")
 
@@ -303,9 +312,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pendingTapTimer = nil
         handsFree = false
 
-        hud.hide()
+        if wasCancelled {
+            hud.hide()
+        } else {
+            hud.setProcessing("transcribing...")
+        }
         statusItem.setState(wasCancelled ? .idle : .processing)
         if !wasCancelled { Sound.play("Tink") }
+        let heldFor = Date().timeIntervalSince(pressedAt)
 
         Task {
             defer {
@@ -316,16 +330,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard started else {
                 Sound.play("Basso")
                 await transcriber.abort()
+                hud.hide()
                 return
             }
             if wasCancelled {
-                await transcriber.abort()
+                // A cancelled dictation that ran a long time is more likely
+                // a slip than an intent to burn the words: transcribe it
+                // quietly into History, never paste
+                if heldFor > 30 {
+                    let recovered = (try? await transcriber.stop()) ?? ""
+                    if !recovered.isEmpty {
+                        HistoryStore.shared.add(
+                            raw: recovered, cleaned: recovered,
+                            appName: self.targetApp?.localizedName ?? "Unknown")
+                        StatsStore.shared.record(
+                            words: StatsStore.wordCount(recovered), seconds: heldFor,
+                            app: self.targetApp?.localizedName ?? "Unknown")
+                        Self.notify(
+                            "Dictation cancelled",
+                            body: "It ran \(Int(heldFor))s, so the transcript was saved to History instead of being discarded.")
+                    }
+                } else {
+                    await transcriber.abort()
+                }
                 return
             }
             do {
                 let text = try await transcriber.stop()
                 guard !text.isEmpty else {
                     Sound.play("Basso")
+                    hud.hide()
                     return
                 }
                 let (selection, fieldContext) = await self.axSnapshot?.value ?? (nil, nil)
@@ -335,11 +369,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     // Voice edit: the spoken words are an instruction applied
                     // to the selected text; pasting replaces the selection
                     self.statusItem.setState(.processing, detail: "Editing selection")
+                    self.hud.setProcessing("editing selection...")
                     guard let edited = await Cleanup.rewrite(
                         selection: selection, instruction: text) else {
                         Sound.play("Basso")
                         Self.notify("Edit failed",
-                                    body: "Selection left unchanged. Is Ollama running?")
+                                    body: "Selection left unchanged. \(Cleanup.providerHint)")
+                        self.hud.hide()
                         return
                     }
                     output = edited
@@ -350,7 +386,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         text, style: self.activeStyle, fieldContext: fieldContext)
                     output = ConfigStore.shared.applyTextRules(to: cleaned)
                 }
-                guard !self.cancelled else { return }
+                guard !self.cancelled else {
+                    self.hud.hide()
+                    return
+                }
 
                 // If the user switched apps while transcribing, put the text
                 // where they were when they started talking
@@ -384,13 +423,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         Paster.pressReturn()
                     }
                 }
+                self.hud.finish()
                 HistoryStore.shared.add(
                     raw: text, cleaned: output,
                     appName: self.targetApp?.localizedName ?? "Unknown")
+                StatsStore.shared.record(
+                    words: StatsStore.wordCount(output), seconds: heldFor,
+                    app: self.targetApp?.localizedName ?? "Unknown")
             } catch {
                 Log.error("dictation error: \(error)")
                 Sound.play("Basso")
                 Self.notify("Dictation failed", body: "\(error.localizedDescription)")
+                self.hud.hide()
             }
         }
     }

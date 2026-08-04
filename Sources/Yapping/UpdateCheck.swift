@@ -29,9 +29,11 @@ enum UpdateCheck {
     /// All releases newer than the running version, newest first.
     /// Empty array means up to date; nil means the check failed.
     static func newerReleases() async -> [Release]? {
-        guard let url = URL(string: releasesAPI),
-              let (data, response) = try? await URLSession.shared.data(from: url),
-              (response as? HTTPURLResponse)?.statusCode == 200,
+        guard let url = URL(string: releasesAPI) else { return nil }
+        let result = try? await URLSession.shared.data(from: url)
+        let ok = (result?.1 as? HTTPURLResponse)?.statusCode == 200
+        NetLog.shared.record(url, purpose: "update check", ok: ok)
+        guard ok, let data = result?.0,
               let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         else { return nil }
 

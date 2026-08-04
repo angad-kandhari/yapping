@@ -46,7 +46,9 @@ enum Updater {
 
         await MainActor.run { progress("Downloading Yapping \(release.version)...") }
         let (download, response) = try await URLSession.shared.download(from: zipURL)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+        let ok = (response as? HTTPURLResponse)?.statusCode == 200
+        NetLog.shared.record(zipURL, purpose: "update download", ok: ok)
+        guard ok else {
             throw UpdaterError.badDownload
         }
 

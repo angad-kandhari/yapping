@@ -25,8 +25,8 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Dictate records your voice while you hold the fn key so it can type what you say.</string>
+	<string>Yapping records your voice while you hold the fn key so it can type what you say.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Dictate transcribes your speech on-device to type it at your cursor.</string>
+	<string>Yapping transcribes your speech on-device to type it at your cursor.</string>
 </dict>
 </plist>

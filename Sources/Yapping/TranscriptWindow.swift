@@ -117,8 +117,12 @@ struct TranscriptView: View {
                     }
                     .disabled(model.isEmpty || model.running || model.summarizing)
                     Button("Copy") {
+                        // Same document Save writes: notes above transcript
+                        let contents = model.summary.isEmpty
+                            ? model.finalized
+                            : model.summary + "\n\n---\n\n" + model.finalized
                         NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(model.finalized, forType: .string)
+                        NSPasteboard.general.setString(contents, forType: .string)
                     }
                     .disabled(model.isEmpty)
                     Button("Save as...") { save() }
