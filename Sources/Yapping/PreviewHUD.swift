@@ -1,21 +1,31 @@
 import AppKit
 
-/// The Dock companion: just the yapping logo bars, floating above the Dock
-/// while you talk. No pill, no background. They grow in when the hold
-/// starts, breathe and dance with your voice, and fade out on release.
+/// The Dock companion while you talk: the yapping logo bars dancing with
+/// your voice, and/or a live line of what the recognizer heard so far.
+/// Both elements are optional per user settings; the panel shows whichever
+/// are enabled and fades out on release.
 final class WaveformHUD {
-    private static let panelSize = NSSize(width: 168, height: 46)
+    private static let panelSize = NSSize(width: 560, height: 96)
+    private static let waveSize = NSSize(width: 168, height: 46)
+    private static let pillHeight: CGFloat = 30
+    private static let pillMaxWidth: CGFloat = 520
 
     private var panel: NSPanel?
     private var waveView: WaveformView?
+    private var pill: NSVisualEffectView?
+    private var label: NSTextField?
+    private var barsVisible = true
 
     /// Fade in and start dancing (call on fn-press).
-    func show() {
+    func show(bars: Bool = true) {
         DispatchQueue.main.async {
             if self.panel == nil { self.makePanel() }
+            self.barsVisible = bars
+            self.waveView?.isHidden = !bars
+            self.setTextNow("")
             self.position()
             self.waveView?.reset()
-            self.waveView?.start()
+            if bars { self.waveView?.start() }
             self.panel?.alphaValue = 0
             self.panel?.orderFrontRegardless()
             NSAnimationContext.runAnimationGroup { ctx in
@@ -44,6 +54,31 @@ final class WaveformHUD {
         DispatchQueue.main.async { self.waveView?.push(level) }
     }
 
+    /// Live transcript so far; thread-safe. The newest words stay visible
+    /// (head truncation) and the pill hugs the text width.
+    func setText(_ text: String) {
+        DispatchQueue.main.async { self.setTextNow(text) }
+    }
+
+    private func setTextNow(_ text: String) {
+        guard let pill, let label else { return }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            pill.isHidden = true
+            label.stringValue = ""
+            return
+        }
+        label.stringValue = trimmed
+        let textWidth = label.attributedStringValue.size().width
+        let width = min(Self.pillMaxWidth, textWidth + 28)
+        let y = barsVisible ? Self.waveSize.height + 8 : 8
+        pill.frame = NSRect(
+            x: (Self.panelSize.width - width) / 2, y: y,
+            width: width, height: Self.pillHeight)
+        label.frame = pill.bounds.insetBy(dx: 12, dy: 0)
+        pill.isHidden = false
+    }
+
     private func makePanel() {
         let panel = NSPanel(
             contentRect: NSRect(origin: .zero, size: Self.panelSize),
@@ -56,11 +91,32 @@ final class WaveformHUD {
         panel.ignoresMouseEvents = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
-        let wave = WaveformView(frame: NSRect(origin: .zero, size: Self.panelSize))
-        wave.autoresizingMask = [.width, .height]
+        let wave = WaveformView(frame: NSRect(
+            origin: NSPoint(x: (Self.panelSize.width - Self.waveSize.width) / 2, y: 0),
+            size: Self.waveSize))
         panel.contentView?.addSubview(wave)
 
+        let pill = NSVisualEffectView()
+        pill.material = .hudWindow
+        pill.blendingMode = .behindWindow
+        pill.state = .active
+        pill.wantsLayer = true
+        pill.layer?.cornerRadius = Self.pillHeight / 2
+        pill.layer?.masksToBounds = true
+        pill.isHidden = true
+
+        let label = NSTextField(labelWithString: "")
+        label.font = .systemFont(ofSize: 13, weight: .medium)
+        label.textColor = .labelColor
+        label.lineBreakMode = .byTruncatingHead
+        label.maximumNumberOfLines = 1
+        label.alignment = .center
+        pill.addSubview(label)
+        panel.contentView?.addSubview(pill)
+
         waveView = wave
+        self.pill = pill
+        self.label = label
         self.panel = panel
     }
 

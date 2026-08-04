@@ -10,6 +10,8 @@ final class TranscriptModel: ObservableObject {
     @Published var running = false
     @Published var statusLine = ""
     @Published var failure: String?
+    @Published var summary = ""
+    @Published var summarizing = false
 
     var isEmpty: Bool { finalized.isEmpty && volatileTail.isEmpty }
 
@@ -21,6 +23,8 @@ final class TranscriptModel: ObservableObject {
         running = false
         statusLine = ""
         failure = nil
+        summary = ""
+        summarizing = false
     }
 }
 
@@ -61,6 +65,29 @@ struct TranscriptView: View {
 
                 Divider()
 
+                if !model.summary.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Notes").font(.caption.bold())
+                                .foregroundStyle(Brand.accent)
+                            Spacer()
+                            Button("Copy notes") {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(model.summary, forType: .string)
+                            }
+                            .controlSize(.small)
+                        }
+                        Text(model.summary)
+                            .font(.callout)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(.quaternary.opacity(0.4))
+                    Divider()
+                }
+
                 ScrollViewReader { proxy in
                     ScrollView {
                         (Text(model.finalized)
@@ -82,6 +109,13 @@ struct TranscriptView: View {
                     Text(model.statusLine)
                         .font(.caption).foregroundStyle(.secondary)
                     Spacer()
+                    if model.summarizing {
+                        ProgressView().controlSize(.small)
+                    }
+                    Button(model.summary.isEmpty ? "Summarize" : "Summarize Again") {
+                        summarize()
+                    }
+                    .disabled(model.isEmpty || model.running || model.summarizing)
                     Button("Copy") {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(model.finalized, forType: .string)
@@ -96,6 +130,22 @@ struct TranscriptView: View {
         .frame(minWidth: 560, minHeight: 440)
     }
 
+    private func summarize() {
+        model.summarizing = true
+        let transcript = model.finalized
+        Task {
+            let notes = await Cleanup.summarize(transcript)
+            await MainActor.run {
+                model.summarizing = false
+                if let notes {
+                    model.summary = notes
+                } else {
+                    model.failure = "Could not summarize. Is your cleanup provider (Settings > Cleanup) available?"
+                }
+            }
+        }
+    }
+
     private func save() {
         let panel = NSSavePanel()
         panel.nameFieldStringValue = model.title
@@ -103,7 +153,10 @@ struct TranscriptView: View {
             .lowercased() + "-transcript.txt"
         NSApp.activate(ignoringOtherApps: true)
         if panel.runModal() == .OK, let url = panel.url {
-            try? model.finalized.write(to: url, atomically: true, encoding: .utf8)
+            let contents = model.summary.isEmpty
+                ? model.finalized
+                : model.summary + "\n\n---\n\n" + model.finalized
+            try? contents.write(to: url, atomically: true, encoding: .utf8)
         }
     }
 }

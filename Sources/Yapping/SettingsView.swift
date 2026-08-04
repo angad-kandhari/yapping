@@ -24,6 +24,7 @@ struct SettingsView: View {
 private struct GeneralSettings: View {
     @ObservedObject var config = ConfigStore.shared
     @State private var locales: [Locale] = []
+    @State private var mics: [AudioInputDevice] = []
     @State private var launchAtLogin = ConfigStore.shared.launchAtLogin
 
     var body: some View {
@@ -37,6 +38,14 @@ private struct GeneralSettings: View {
                     }
                 }
                 .help("Changing language downloads that on-device speech model once.")
+                Picker("Microphone", selection: $config.micDeviceUID) {
+                    Text("System default").tag("")
+                    ForEach(mics) { mic in
+                        Text(mic.name).tag(mic.uid)
+                    }
+                }
+                Text("Pinning the built-in mic keeps dictation sharp even when AirPods connect; their mic records at lower quality. An unplugged pinned mic quietly falls back to the default.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section("Cleanup") {
                 Toggle("Clean up transcripts with a local model", isOn: $config.cleanupEnabled)
@@ -85,10 +94,21 @@ private struct GeneralSettings: View {
                 Toggle("Waveform above the Dock", isOn: $config.hudEnabled)
                 Text("The yapping logo dances with your voice while you talk.")
                     .font(.caption).foregroundStyle(.secondary)
+                Toggle("Show words as you speak", isOn: $config.livePreview)
+                Text("Your words appear live above the Dock while you dictate, so you can see the recognizer keeping up.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
         .task {
+            mics = AudioDevices.inputs()
+            // A pinned mic that is gone right now still needs a menu entry,
+            // or the picker would silently snap to System default
+            if !config.micDeviceUID.isEmpty,
+               !mics.contains(where: { $0.uid == config.micDeviceUID }) {
+                mics.append(AudioInputDevice(
+                    uid: config.micDeviceUID, name: "Remembered mic (not connected)"))
+            }
             let supported = await SpeechTranscriber.supportedLocales
             locales = supported.sorted {
                 $0.identifier < $1.identifier

@@ -10,7 +10,7 @@ struct HistoryEntry: Codable, Identifiable {
     let cleaned: String
 }
 
-/// Last 20 dictations, raw and cleaned side by side. This is the
+/// Recent dictations, raw and cleaned side by side. This is the
 /// transparency feature: cleanup is inspectable, never a black box.
 final class HistoryStore: ObservableObject {
     static let shared = HistoryStore()
@@ -32,8 +32,8 @@ final class HistoryStore: ObservableObject {
                 HistoryEntry(id: UUID(), date: Date(), appName: appName,
                              raw: raw, cleaned: cleaned),
                 at: 0)
-            if self.entries.count > 20 {
-                self.entries.removeLast(self.entries.count - 20)
+            if self.entries.count > 200 {
+                self.entries.removeLast(self.entries.count - 200)
             }
             self.save()
         }
@@ -58,6 +58,17 @@ final class HistoryStore: ObservableObject {
 
 struct HistoryView: View {
     @ObservedObject var store = HistoryStore.shared
+    @State private var query = ""
+
+    private var filtered: [HistoryEntry] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return store.entries }
+        return store.entries.filter {
+            $0.cleaned.localizedCaseInsensitiveContains(q)
+                || $0.raw.localizedCaseInsensitiveContains(q)
+                || $0.appName.localizedCaseInsensitiveContains(q)
+        }
+    }
 
     var body: some View {
         BrandChrome(title: "history") {
@@ -66,41 +77,54 @@ struct HistoryView: View {
         .frame(minWidth: 500, minHeight: 400)
     }
 
-    @ViewBuilder
     private var historyContent: some View {
-        Group {
+        VStack(spacing: 0) {
             if store.entries.isEmpty {
                 Text("No dictations yet. Hold the globe key and yap.")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(store.entries) { entry in
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(entry.date, style: .time)
-                                .font(.caption).foregroundStyle(.secondary)
-                            Text(entry.appName)
-                                .font(.caption).foregroundStyle(.secondary)
-                            Spacer()
-                            Button("Copy") {
-                                NSPasteboard.general.clearContents()
-                                NSPasteboard.general.setString(entry.cleaned, forType: .string)
+                TextField("Search dictations", text: $query)
+                    .textFieldStyle(.roundedBorder)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                if filtered.isEmpty {
+                    Text("Nothing matches \"\(query)\".")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List(filtered) { entry in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(entry.date, style: .time)
+                                    .font(.caption).foregroundStyle(.secondary)
+                                Text(entry.appName)
+                                    .font(.caption).foregroundStyle(.secondary)
+                                Spacer()
+                                Button("Copy") {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(entry.cleaned, forType: .string)
+                                }
+                            }
+                            Text(entry.cleaned)
+                            if entry.raw != entry.cleaned {
+                                Text("Raw: \(entry.raw)")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
                             }
                         }
-                        Text(entry.cleaned)
-                        if entry.raw != entry.cleaned {
-                            Text("Raw: \(entry.raw)")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                        }
+                        .padding(.vertical, 4)
                     }
-                    .padding(.vertical, 4)
+                    .scrollContentBackground(.hidden)
                 }
             }
         }
-        .scrollContentBackground(.hidden)
         .safeAreaInset(edge: .bottom) {
             HStack {
+                if !store.entries.isEmpty {
+                    Text("\(filtered.count) of \(store.entries.count)")
+                        .font(.caption).foregroundStyle(.tertiary)
+                }
                 Spacer()
                 Button("Clear history") { store.clear() }
                     .disabled(store.entries.isEmpty)

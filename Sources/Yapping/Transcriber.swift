@@ -1,3 +1,4 @@
+import AudioToolbox
 import AVFoundation
 import Speech
 
@@ -9,6 +10,9 @@ import Speech
 final class Transcriber {
     /// Per-buffer loudness (RMS), feeds the waveform animations.
     var onLevel: ((Float) -> Void)?
+    /// Running transcript (finalized plus the still-refining tail) while the
+    /// user talks; feeds the live preview. Arbitrary thread.
+    var onPartial: ((String) -> Void)?
     /// Fired on the main queue when the input device changes mid-capture
     /// (AirPods connecting, a USB mic unplugged). The owner should end the
     /// session gracefully; the words spoken so far are still transcribed.
@@ -80,7 +84,7 @@ final class Transcriber {
         SpeechTranscriber(
             locale: locale,
             transcriptionOptions: [],
-            reportingOptions: [],
+            reportingOptions: [.volatileResults],
             attributeOptions: []
         )
     }
@@ -123,16 +127,23 @@ final class Transcriber {
             }
         }
 
-        resultsTask = Task {
+        resultsTask = Task { [weak self] in
             var text = ""
-            for try await result in module.results where result.isFinal {
-                text += String(result.text.characters)
+            for try await result in module.results {
+                let chunk = String(result.text.characters)
+                if result.isFinal {
+                    text += chunk
+                    self?.onPartial?(text)
+                } else {
+                    self?.onPartial?(text + chunk)
+                }
             }
             return text
         }
 
         if needsFreshEngine { rebuildEngine() }
         var input = engine.inputNode
+        applyMicPin(input)
         var inputFormat = input.outputFormat(forBus: 0)
         // Mid device-switch the node can report 0 Hz / 0 channels, and
         // installTap with that format is an uncatchable assert. One rebuild
@@ -141,6 +152,7 @@ final class Transcriber {
         if inputFormat.sampleRate <= 0 || inputFormat.channelCount == 0 {
             rebuildEngine()
             input = engine.inputNode
+            applyMicPin(input)
             inputFormat = input.outputFormat(forBus: 0)
         }
         guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
@@ -187,6 +199,30 @@ final class Transcriber {
         module = nil
         resultsTask = nil
         converter = nil
+    }
+
+    /// Pin capture to the user's chosen device (Settings > Speech), applied
+    /// before the format is read so the tap and converter see the pinned
+    /// device's format. Missing device = quiet fallback to system default,
+    /// so an unplugged USB mic never blocks dictation.
+    private func applyMicPin(_ input: AVAudioInputNode) {
+        let uid = ConfigStore.shared.micDeviceUID
+        guard !uid.isEmpty else { return }
+        guard let resolved = AudioDevices.deviceID(forUID: uid),
+              let unit = input.audioUnit else {
+            Log.info("pinned mic '\(uid)' not present; using system default")
+            return
+        }
+        var deviceID = resolved
+        let status = AudioUnitSetProperty(
+            unit, kAudioOutputUnitProperty_CurrentDevice,
+            kAudioUnitScope_Global, 0, &deviceID,
+            UInt32(MemoryLayout<AudioDeviceID>.size))
+        if status == noErr {
+            Log.info("mic pinned to '\(uid)'")
+        } else {
+            Log.error("mic pin failed (\(status)); using system default")
+        }
     }
 
     private func stopEngine() {

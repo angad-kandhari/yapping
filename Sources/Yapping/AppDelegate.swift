@@ -90,12 +90,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
 
-        // The waveform only appears while talking; hide it if turned off mid-hold
+        // The HUD only appears while talking; hide it if everything it can
+        // show gets turned off mid-hold
         hudWatcher = ConfigStore.shared.$hudEnabled
             .removeDuplicates()
             .dropFirst()
             .sink { [weak self] enabled in
-                if !enabled { self?.hud.hide() }
+                if !enabled && !ConfigStore.shared.livePreview { self?.hud.hide() }
             }
 
         // Language switches trigger a one-time model download for that locale
@@ -109,6 +110,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.statusItem.pushLevel(level)
             self?.hud.pushLevel(level)
             self?.voiceActivity(level)
+        }
+        transcriber.onPartial = { [weak self] text in
+            guard ConfigStore.shared.livePreview else { return }
+            self?.hud.setText(text)
         }
         // AirPods (or any device) connecting mid-dictation: finish the
         // session gracefully with what was said instead of crashing on the
@@ -252,7 +257,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         statusItem.setState(.recording, detail: activeStyle?.name)
-        if ConfigStore.shared.hudEnabled { hud.show() }
+        let config = ConfigStore.shared
+        if config.hudEnabled || config.livePreview {
+            hud.show(bars: config.hudEnabled)
+        }
         Sound.play("Pop")
 
         maxTimer = Timer.scheduledTimer(withTimeInterval: maxHold, repeats: false) { [weak self] _ in

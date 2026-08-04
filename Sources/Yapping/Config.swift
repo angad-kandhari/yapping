@@ -38,6 +38,10 @@ final class ConfigStore: ObservableObject {
     @Published var styles: [Style] { didSet { saveJSON(styles, key: "styles") } }
     @Published var useFieldContext: Bool { didSet { d.set(useFieldContext, forKey: "useFieldContext") } }
     @Published var hudEnabled: Bool { didSet { d.set(hudEnabled, forKey: "hudEnabled") } }
+    /// Input device UID to pin capture to; empty means system default.
+    @Published var micDeviceUID: String { didSet { d.set(micDeviceUID, forKey: "micDeviceUID") } }
+    /// Live words above the Dock while dictating.
+    @Published var livePreview: Bool { didSet { d.set(livePreview, forKey: "livePreview") } }
 
     private let d = UserDefaults.standard
 
@@ -69,6 +73,8 @@ final class ConfigStore: ObservableObject {
         styles = loadedStyles
         useFieldContext = d.object(forKey: "useFieldContext") as? Bool ?? true
         hudEnabled = d.object(forKey: "hudEnabled") as? Bool ?? false
+        micDeviceUID = d.string(forKey: "micDeviceUID") ?? ""
+        livePreview = d.object(forKey: "livePreview") as? Bool ?? true
     }
 
     private func saveJSON<T: Encodable>(_ value: T, key: String) {

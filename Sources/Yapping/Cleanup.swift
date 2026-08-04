@@ -93,6 +93,66 @@ enum Cleanup {
         return edited
     }
 
+    private static let summaryPrompt = """
+    You summarize a transcript (meeting, lecture, podcast, or video). \
+    Return plain text with exactly these sections:
+    TL;DR: one or two sentences.
+    Key points: the important points, each on its own line starting with "- ".
+    Action items: concrete tasks or follow-ups as "- " lines; omit this \
+    section entirely if there are none.
+    No preamble, no markdown headers, no em dashes.
+    """
+
+    /// Meeting notes from a Listen or file transcript. Long transcripts are
+    /// summarized in chunks first (local models have small context windows),
+    /// then the notes are merged. Nil means no provider produced anything;
+    /// the transcript itself is never at risk.
+    static func summarize(_ transcript: String) async -> String? {
+        let text = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        let chunks = split(text, size: 8000)
+        if chunks.count == 1 {
+            return await summaryPass(chunks[0])
+        }
+        var notes: [String] = []
+        for chunk in chunks {
+            if let note = await chat(
+                system: "Condense this transcript excerpt into terse notes of its facts, "
+                    + "decisions, and tasks. Plain \"- \" lines only, no commentary, no em dashes.",
+                user: chunk, maxTokens: 400) {
+                notes.append(sanitize(note))
+            }
+        }
+        guard !notes.isEmpty else { return nil }
+        return await summaryPass(notes.joined(separator: "\n"))
+    }
+
+    private static func summaryPass(_ text: String) async -> String? {
+        guard let raw = await chat(system: summaryPrompt, user: text, maxTokens: 800)
+        else { return nil }
+        let summary = sanitize(raw)
+        return summary.isEmpty ? nil : summary
+    }
+
+    private static func split(_ text: String, size: Int) -> [String] {
+        guard text.count > size else { return [text] }
+        var chunks: [String] = []
+        var rest = Substring(text)
+        while !rest.isEmpty {
+            let cut = rest.prefix(size)
+            // Prefer breaking at a sentence-ish boundary near the end
+            if cut.count == size, let dot = cut.lastIndex(of: "."),
+               cut.distance(from: dot, to: cut.endIndex) < 1500 {
+                chunks.append(String(rest[...dot]))
+                rest = rest[rest.index(after: dot)...]
+            } else {
+                chunks.append(String(cut))
+                rest = rest.dropFirst(cut.count)
+            }
+        }
+        return chunks
+    }
+
     /// Ollama reachability (used by the setup assistant).
     static func reachable() async -> Bool { await ollamaUp() }
 
