@@ -29,6 +29,11 @@ final class Transcriber {
     private var resultsTask: Task<String, Error>?
     private var converter: AVAudioConverter?
     private var analyzerFormat: AVAudioFormat?
+    /// Set when the mic is multichannel (raw 3-mic array, USB interfaces):
+    /// buffers are hand-mixed to this mono format before the converter,
+    /// which silently drops multichannel input otherwise.
+    private var tapMonoFormat: AVAudioFormat?
+    private var loggedConvertError = false
 
     init() {
         armEngine()
@@ -160,7 +165,18 @@ final class Transcriber {
             throw YappingError.inputNotReady
         }
         Log.info("capture start: input \(inputFormat.sampleRate) Hz, \(inputFormat.channelCount) ch")
-        converter = AVAudioConverter(from: inputFormat, to: format)
+        loggedConvertError = false
+        tapMonoFormat = inputFormat.channelCount > 1
+            ? AVAudioFormat(commonFormat: .pcmFormatFloat32,
+                            sampleRate: inputFormat.sampleRate,
+                            channels: 1, interleaved: false)
+            : nil
+        let converterSource = tapMonoFormat ?? inputFormat
+        converter = AVAudioConverter(from: converterSource, to: format)
+        guard converter != nil else {
+            Log.error("no converter from \(converterSource) to \(format)")
+            throw YappingError.inputNotReady
+        }
 
         input.installTap(onBus: 0, bufferSize: 2048, format: inputFormat) { [weak self] buffer, _ in
             guard let self else { return }
@@ -185,6 +201,7 @@ final class Transcriber {
         module = nil
         resultsTask = nil
         converter = nil
+        tapMonoFormat = nil
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -199,6 +216,7 @@ final class Transcriber {
         module = nil
         resultsTask = nil
         converter = nil
+        tapMonoFormat = nil
     }
 
     /// Pin capture to the user's chosen device (Settings > Speech), applied
@@ -235,9 +253,10 @@ final class Transcriber {
     }
 
     private func convert(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
-        guard let converter, let format = analyzerFormat else { return nil }
-        let ratio = format.sampleRate / buffer.format.sampleRate
-        let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 16
+        guard let converter, let format = analyzerFormat,
+              let source = downmixIfNeeded(buffer) else { return nil }
+        let ratio = format.sampleRate / source.format.sampleRate
+        let capacity = AVAudioFrameCount(Double(source.frameLength) * ratio) + 16
         guard let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else {
             return nil
         }
@@ -250,10 +269,40 @@ final class Transcriber {
             }
             served = true
             status.pointee = .haveData
+            return source
+        }
+        guard error == nil, out.frameLength > 0 else {
+            // Once per session: a silent converter is an inaudible failure
+            // (bars dance, transcript empty) and cost a day to diagnose
+            if !loggedConvertError {
+                loggedConvertError = true
+                Log.error("audio conversion failing: \(error?.localizedDescription ?? "no frames out")")
+            }
+            return nil
+        }
+        return out
+    }
+
+    /// Average all channels into mono. The recognizer wants one channel;
+    /// AVAudioConverter drops multichannel buffers on the floor instead of
+    /// downmixing them.
+    private func downmixIfNeeded(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
+        guard let monoFormat = tapMonoFormat, buffer.format.channelCount > 1 else {
             return buffer
         }
-        guard error == nil, out.frameLength > 0 else { return nil }
-        return out
+        guard let src = buffer.floatChannelData,
+              let mono = AVAudioPCMBuffer(
+                pcmFormat: monoFormat, frameCapacity: buffer.frameLength),
+              let dst = mono.floatChannelData else { return nil }
+        let channels = Int(buffer.format.channelCount)
+        let frames = Int(buffer.frameLength)
+        for i in 0..<frames {
+            var sum: Float = 0
+            for ch in 0..<channels { sum += src[ch][i] }
+            dst[0][i] = sum / Float(channels)
+        }
+        mono.frameLength = buffer.frameLength
+        return mono
     }
 
     private static func rms(of buffer: AVAudioPCMBuffer) -> Float {
