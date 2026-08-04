@@ -64,9 +64,17 @@ dmg: sign
 
 # Notarize before packaging so the dmg and zip carry the stapled app.
 # (Not via the dmg target: its sign dependency re-bundles, wiping the staple.)
+# Needs both the Developer ID cert and stored notarytool credentials
+# (xcrun notarytool store-credentials yapping); missing either skips the step.
+NOTARY_READY := $(shell security find-generic-password -s "com.apple.gke.notary.tool" >/dev/null 2>&1 && echo yes)
+
 release: sign
 ifneq (,$(findstring Developer ID,$(IDENTITY)))
+ifeq ($(NOTARY_READY),yes)
 	$(MAKE) notarize
+else
+	@echo "no notarytool credentials (run: xcrun notarytool store-credentials yapping); releasing without notarization"
+endif
 else
 	@echo "no Developer ID identity; releasing without notarization"
 endif
