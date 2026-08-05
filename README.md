@@ -52,6 +52,16 @@ subscription, no word limits.
 | **Transcribe files** | Audio and video files, many times faster than real time; menu or drag onto the icon |
 | **Listen mode** | Transcribes what your Mac is playing: lectures, podcasts, the other side of calls |
 
+### New in 2.5
+
+- **Spoken punctuation and layout.** Say "new paragraph", "comma", "question mark", or "scratch that" and get the character or the edit rather than the word.
+- **Passwords are left alone.** A field that reports itself as a password field never starts the mic, and nothing is stored. See SECURITY.md for what that does and does not cover.
+- **Speak one language, paste another.** Per style or globally, using the same local provider as cleanup.
+- **Diagnostics.** A live input meter, your device and its format, provider health, and a self test that runs the whole path end to end. The bug report writes itself.
+- **A Dock icon while a window is open**, so cmd-Tab and the menu bar work, and none while yapping is just listening for the key.
+- **Deeper stats**: pace over time, when you yap most, which style wrote it, and how long you have been at it.
+- **History that does more**: re-run cleanup with any style, delete single entries, export to Markdown or JSON.
+
 ## Install
 
 Build from source (no Gatekeeper friction):

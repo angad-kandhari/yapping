@@ -23,6 +23,23 @@ rather stay anonymous.
   permissions, or in a location other users can read
 - Misuse of the input and accessibility grants beyond capturing your voice and pasting the result
 
+## The password field guard is a mitigation, not a boundary
+
+From 2.5 yapping refuses to start the microphone when the focused field
+reports itself as a password field, and it repeats that check before pasting.
+Please understand its limits before relying on it.
+
+It works by asking the accessibility API what the focused element is. Only an
+explicit answer of AXSecureTextField counts. Silence is treated as permission
+to dictate, because silence is what most applications return: browsers and
+Electron apps usually describe a password box as an ordinary text field, and a
+terminal asking for a sudo password is not a text field at all. Blocking on
+silence would break dictation nearly everywhere, so it does not.
+
+So: a positive signal is trustworthy and acted on. A negative one cannot be
+manufactured. Treat the guard as a seatbelt, not a vault, and please do report
+apps where it should fire and does not.
+
 ## Out of scope
 
 - Bugs with no security impact; please file a normal issue
