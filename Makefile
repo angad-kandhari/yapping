@@ -66,7 +66,9 @@ dmg: sign
 # (Not via the dmg target: its sign dependency re-bundles, wiping the staple.)
 # Needs both the Developer ID cert and stored notarytool credentials
 # (xcrun notarytool store-credentials yapping); missing either skips the step.
-NOTARY_READY := $(shell security find-generic-password -s "com.apple.gke.notary.tool" >/dev/null 2>&1 && echo yes)
+# Ask notarytool itself rather than guessing at keychain service names:
+# a probe that silently answers "no" ships unnotarized releases.
+NOTARY_READY := $(shell xcrun notarytool history --keychain-profile yapping >/dev/null 2>&1 && echo yes)
 
 release: sign
 ifneq (,$(findstring Developer ID,$(IDENTITY)))
