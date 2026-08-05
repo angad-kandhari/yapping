@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and setup help
+    url: https://get-yapping.com/#faq
+    about: The FAQ covers permissions, the globe key, providers, and the Windows and Linux betas.
+  - name: Windows beta
+    url: https://github.com/angad-kandhari/yapping-windows/issues
+    about: Bugs in the Windows build belong in that repository.
+  - name: Linux beta
+    url: https://github.com/angad-kandhari/yapping-linux/issues
+    about: Bugs in the Linux build belong in that repository.

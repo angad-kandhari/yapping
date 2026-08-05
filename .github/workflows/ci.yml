@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  guards:
+    name: house rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No em dashes anywhere
+        run: |
+          if grep -rn "\u2014" Sources docs README.md CONTRIBUTING.md SECURITY.md 2>/dev/null; then
+            echo "::error::Em dashes are not used in this project. Use commas, colons, or two sentences."
+            exit 1
+          fi
+          echo "no em dashes"
+
+      - name: Network allowlist
+        run: |
+          allowed='localhost|127\.0\.0\.1|api\.github\.com|github\.com|ollama\.com|www\.apple\.com'
+          bad=0
+          for host in $(grep -rhoE 'https?://[a-zA-Z0-9._-]+' Sources | sed -E 's#https?://##' | sort -u); do
+            if ! echo "$host" | grep -qE "^($allowed)$"; then
+              echo "::error::Unexpected network host in Sources: $host"
+              echo "Privacy is the product. New hosts need a discussion first."
+              bad=1
+            fi
+          done
+          if [ "$bad" -ne 0 ]; then exit 1; fi
+          echo "only expected hosts are referenced"
+
+  build:
+    name: build and test
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: swift build -c release --arch arm64
+      - name: Test
+        run: swift test

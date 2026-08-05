@@ -1,0 +1,89 @@
+name: Bug report
+description: Something in yapping is broken
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. yapping writes a log file, and it makes most bugs
+        diagnosable at a glance, so please include it if you can.
+
+  - type: input
+    id: version
+    attributes:
+      label: yapping version
+      description: Settings > Privacy shows it, as does the menu bar under Check for Updates.
+      placeholder: "2.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: system
+    attributes:
+      label: macOS version and chip
+      placeholder: "macOS 26.3.1, M3 Pro"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+      placeholder: |
+        1. Held the globe key in Slack
+        2. Said "ship it tomorrow"
+        3. Expected the text to paste; nothing appeared and I heard the error sound
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log output
+      description: |
+        Settings > Privacy > Reveal Log File, or open ~/Library/Logs/Yapping/yapping.log
+        and paste the lines around the failure. Scrub anything you would rather not share;
+        the log holds no transcripts, only what the app was doing.
+      render: text
+    validations:
+      required: false
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Cleanup provider
+      options:
+        - Apple Intelligence (default)
+        - Ollama
+        - Custom endpoint
+        - Cleanup turned off
+        - Not sure
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where it went wrong
+      options:
+        - Dictation (hold to talk)
+        - Hands-free (double tap)
+        - Voice editing a selection
+        - Listen mode (system audio)
+        - File transcription
+        - The main window or settings
+        - Updating the app
+        - Something else
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I am on the latest release
+          required: false
+        - label: I searched existing issues
+          required: false
