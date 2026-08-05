@@ -256,6 +256,7 @@
     <div class="nav" data-pane="styles"><svg class="navicon" viewBox="0 0 20 20"><path d="M4 15l8-8 3 3-8 8H4z"/><path d="M12 7l1.5-1.5 3 3L15 10"/></svg><span class="lbl">Styles</span></div>
     <div class="nav" data-pane="dictionary"><svg class="navicon" viewBox="0 0 20 20"><path d="M5 3h9a1 1 0 011 1v12a1 1 0 01-1 1H5zM5 3v14M8 7h4"/></svg><span class="lbl">Dictionary</span></div>
     <div class="nav" data-pane="settings"><svg class="navicon" viewBox="0 0 20 20"><circle cx="10" cy="10" r="2.6"/><path d="M10 3v2.2M10 14.8V17M3 10h2.2M14.8 10H17M5 5l1.6 1.6M13.4 13.4L15 15M15 5l-1.6 1.6M6.6 13.4L5 15"/></svg><span class="lbl">Settings</span></div>
+    <div class="nav" data-pane="diagnostics"><svg class="navicon" viewBox="0 0 20 20"><path d="M6 3v4a4 4 0 008 0V3"/><path d="M10 11v3a3 3 0 003 3 3 3 0 003-3v-1"/><circle cx="16" cy="9" r="1.6"/></svg><span class="lbl">Diagnostics</span></div>
     <div class="nav" data-pane="privacy"><svg class="navicon" viewBox="0 0 20 20"><path d="M10 2.5l6 2.2v4.6c0 4-2.6 6.7-6 8.2-3.4-1.5-6-4.2-6-8.2V4.7z"/><path d="M7.4 9.8l1.8 1.8 3.4-3.4"/></svg><span class="lbl">Privacy</span></div>
     <div class="gap"></div>
     <div class="status">
@@ -361,6 +362,46 @@
         <div class="g">Waveform above the Dock<span class="sw off"></span></div>
         <div class="g">"Send it" presses Return<span class="sw"></span></div>
         <div class="g">Start at login<span class="sw"></span></div>
+      </div>
+    </div>
+
+    <div class="pane" data-p="diagnostics">
+      <div class="ptitle">diagnostics</div>
+      <div class="psub">what yapping can see, hear, and reach right now</div>
+
+      <div class="privcard">
+        <div class="mono">PERMISSIONS</div>
+        <ul>
+          <li>Microphone</li>
+          <li>Input monitoring</li>
+          <li>Accessibility</li>
+          <li>Globe key set to Do Nothing</li>
+        </ul>
+      </div>
+
+      <div class="privcard">
+        <div class="mono">AUDIO INPUT</div>
+        <div style="font-size: 14px; font-weight: 600; margin-bottom: 2px;">MacBook Pro Microphone</div>
+        <div style="font-size: 12px; color: var(--ink2);">Pinned in Settings &middot; 48000 Hz, 3 channels, downmixed to mono for the recognizer</div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 12px;">
+          <div style="flex: 1; height: 8px; border-radius: 999px; background: rgba(127,127,127,.15); overflow: hidden;">
+            <div style="width: 46%; height: 100%; border-radius: 999px; background: var(--acc);"></div>
+          </div>
+          <span style="font-size: 11px; color: var(--ink2);">Test microphone</span>
+        </div>
+      </div>
+
+      <div class="privcard">
+        <div class="mono">SELF TEST</div>
+        <div style="display: flex; flex-direction: column; gap: 7px; margin-top: 4px;">
+          <div style="display:flex; gap:8px; font-size:12.5px;"><span style="color:#30d158;">&#10003;</span><b>Permissions</b><span style="color:var(--ink2);">All four grants in place</span><span style="margin-left:auto; font-size:10.5px; color:var(--ink3);">4 ms</span></div>
+          <div style="display:flex; gap:8px; font-size:12.5px;"><span style="color:#30d158;">&#10003;</span><b>Input device</b><span style="color:var(--ink2);">48000 Hz, 3 ch (downmixed)</span><span style="margin-left:auto; font-size:10.5px; color:var(--ink3);">11 ms</span></div>
+          <div style="display:flex; gap:8px; font-size:12.5px;"><span style="color:#30d158;">&#10003;</span><b>Speech model</b><span style="color:var(--ink2);">Installed for en_US</span><span style="margin-left:auto; font-size:10.5px; color:var(--ink3);">62 ms</span></div>
+          <div style="display:flex; gap:8px; font-size:12.5px;"><span style="color:#30d158;">&#10003;</span><b>Microphone hears something</b><span style="color:var(--ink2);">Peak level 0.184</span><span style="margin-left:auto; font-size:10.5px; color:var(--ink3);">3.0 s</span></div>
+          <div style="display:flex; gap:8px; font-size:12.5px;"><span style="color:#30d158;">&#10003;</span><b>Transcription</b><span style="color:var(--ink2);">Heard: testing one two three</span><span style="margin-left:auto; font-size:10.5px; color:var(--ink3);">3.2 s</span></div>
+          <div style="display:flex; gap:8px; font-size:12.5px;"><span style="color:#30d158;">&#10003;</span><b>Cleanup provider</b><span style="color:var(--ink2);">I think we should ship it.</span><span style="margin-left:auto; font-size:10.5px; color:var(--ink3);">840 ms</span></div>
+        </div>
+        <div class="none" style="margin-top: 12px;">Copy diagnostics report &middot; never includes a word you dictated</div>
       </div>
     </div>
 
