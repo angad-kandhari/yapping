@@ -46,6 +46,8 @@ final class ConfigStore: ObservableObject {
     @Published var blockSecureFields: Bool { didSet { d.set(blockSecureFields, forKey: "blockSecureFields") } }
     /// Honor spoken formatting commands ("new paragraph", "scratch that").
     @Published var voiceCommands: Bool { didSet { d.set(voiceCommands, forKey: "voiceCommands") } }
+    /// BCP-47 language to paste in when a style does not name its own.
+    @Published var defaultTargetLanguage: String { didSet { d.set(defaultTargetLanguage, forKey: "defaultTargetLanguage") } }
 
     private let d = UserDefaults.standard
 
@@ -86,6 +88,7 @@ final class ConfigStore: ObservableObject {
         livePreview = d.object(forKey: "livePreview") as? Bool ?? true
         blockSecureFields = d.object(forKey: "blockSecureFields") as? Bool ?? true
         voiceCommands = d.object(forKey: "voiceCommands") as? Bool ?? true
+        defaultTargetLanguage = d.string(forKey: "defaultTargetLanguage") ?? ""
     }
 
     private func saveJSON<T: Encodable>(_ value: T, key: String) {

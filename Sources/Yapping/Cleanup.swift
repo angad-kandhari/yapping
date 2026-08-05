@@ -93,6 +93,31 @@ enum Cleanup {
         return edited
     }
 
+    // MARK: - Translation
+
+    /// Speak one language, paste another. Runs after polish rather than as
+    /// one combined instruction: small local models follow a single clear
+    /// instruction far more reliably than a compound one.
+    static func translate(_ text: String, to language: String) async -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !language.isEmpty else { return nil }
+        let name = Translation.displayName(language)
+        let systemPrompt = """
+        Translate the text into \(name). Return ONLY the translation, with no \
+        preamble, no quotes, no commentary, and no explanation. Preserve the \
+        meaning, the register, and the formatting. Never use em dashes.
+        """
+        guard let raw = await chat(
+            system: systemPrompt, user: trimmed,
+            maxTokens: max(700, trimmed.count * 2)) else { return nil }
+        let out = sanitize(raw)
+        guard Translation.looksSane(source: trimmed, output: out) else {
+            Log.error("translation rejected as implausible; keeping the original")
+            return nil
+        }
+        return out
+    }
+
     private static let summaryPrompt = """
     You summarize a transcript (meeting, lecture, podcast, or video). \
     Return plain text with exactly these sections:

@@ -99,6 +99,16 @@ private struct GeneralSettings: View {
                 Text("If the provider fails or over-edits, the raw transcript is used. Words are never lost.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Section("Language out") {
+                Picker("Paste in", selection: $config.defaultTargetLanguage) {
+                    Text("The language you spoke").tag("")
+                    ForEach(Translation.targets, id: \.self) { code in
+                        Text(Translation.displayName(code)).tag(code)
+                    }
+                }
+                Text("Speak in one language and have another land at your cursor. A style can override this. Translation runs on your cleanup provider, so it stays on this Mac, and it adds a second model call per dictation.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("Spoken commands") {
                 Toggle("Honor spoken formatting commands", isOn: $config.voiceCommands)
                 Text("Say \"new line\", \"new paragraph\", \"comma\", \"period\", \"question mark\", or \"exclamation mark\" and you get the character instead of the word. \"Scratch that\" drops what you just said; \"caps on\" and \"caps off\" title-case a stretch of words.")
@@ -274,6 +284,14 @@ private struct StylesSettings: View {
                                 set: { style.appPatterns = $0.split(separator: ",")
                                     .map { $0.trimmingCharacters(in: .whitespaces) } }))
                     Toggle("Verbatim (skip cleanup entirely)", isOn: $style.verbatim)
+                    if !style.verbatim {
+                        Picker("Paste in", selection: $style.targetLanguage) {
+                            Text("The language you spoke").tag("")
+                            ForEach(Translation.targets, id: \.self) { code in
+                                Text(Translation.displayName(code)).tag(code)
+                            }
+                        }
+                    }
                     if !style.verbatim {
                         TextEditor(text: $style.prompt)
                             .font(.system(.body))

@@ -293,8 +293,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.setState(.recording, detail: activeStyle?.name)
         let config = ConfigStore.shared
         if config.hudEnabled || config.livePreview {
+            var chip = activeStyle?.name
+            if activeStyle?.verbatim != true,
+               let target = Translation.resolve(
+                   style: activeStyle, fallback: config.defaultTargetLanguage) {
+                chip = (chip.map { "\($0) " } ?? "") + "\u{2192} \(target)"
+            }
             hud.begin(
-                style: activeStyle?.name, startedAt: pressedAt, maxHold: maxHold,
+                style: chip, startedAt: pressedAt, maxHold: maxHold,
                 showBars: config.hudEnabled, showText: config.livePreview)
         }
         Sound.play("Pop")
@@ -421,16 +427,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         && (self.activeStyle?.voiceCommands ?? true)
                     let prepared = VoiceCommands.prepare(text, enabled: wantsCommands)
 
+                    // Verbatim means exactly what was said, so it skips both
+                    // cleanup and translation.
+                    let verbatim = self.activeStyle?.verbatim == true
+                    let target = verbatim ? nil : Translation.resolve(
+                        style: self.activeStyle,
+                        fallback: ConfigStore.shared.defaultTargetLanguage)
+
                     var pieces: [String] = []
-                    if self.activeStyle?.verbatim == true {
-                        pieces = prepared.segments
-                    } else {
-                        for segment in prepared.segments {
-                            let cleaned = await Cleanup.polish(
-                                text: segment, style: self.activeStyle,
+                    for segment in prepared.segments {
+                        var piece = segment
+                        if !verbatim {
+                            piece = await Cleanup.polish(
+                                text: piece, style: self.activeStyle,
                                 fieldContext: fieldContext)
-                            pieces.append(cleaned)
                         }
+                        if let target {
+                            // Translating per segment keeps paragraph
+                            // structure from drifting during the rewrite.
+                            self.hud.setProcessing("translating...")
+                            if let translated = await Cleanup.translate(piece, to: target) {
+                                piece = translated
+                            }
+                        }
+                        pieces.append(piece)
                     }
 
                     let rejoined = VoiceCommands.rejoin(pieces, prepared)
