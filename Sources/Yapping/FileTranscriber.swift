@@ -57,6 +57,13 @@ enum FileTranscriber {
                     raw: String(transcript.prefix(2000)),
                     cleaned: String(transcript.prefix(2000)),
                     appName: "File: \(url.lastPathComponent)")
+                let storeID = TranscriptStore.shared.add(
+                    kind: .file,
+                    title: url.lastPathComponent,
+                    seconds: duration,
+                    words: wordCount,
+                    text: transcript)
+                await MainActor.run { model.storeID = storeID }
             }
         } catch {
             await MainActor.run {

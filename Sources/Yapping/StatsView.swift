@@ -1,7 +1,19 @@
 import SwiftUI
 
-/// The stats tab: everything Wispr Flow's dashboard shows, computed and
+/// The stats pane: everything Wispr Flow's dashboard shows, computed and
 /// stored only on this Mac. Numbers only; stats never keep your words.
+struct StatsPane: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            PaneHeader(title: "stats",
+                       sub: "computed and stored only on this Mac \u{00B7} stats never keep your words")
+                .padding(.horizontal, 36)
+                .padding(.top, 48)
+            StatsView()
+        }
+    }
+}
+
 struct StatsView: View {
     @ObservedObject var store = StatsStore.shared
 
@@ -12,14 +24,17 @@ struct StatsView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 16) {
                     tiles
-                    heatmap
-                    perApp
+                    HStack(alignment: .top, spacing: 14) {
+                        heatmap
+                        perApp.frame(maxWidth: .infinity, alignment: .topLeading)
+                    }
                     Text("All numbers live only on this Mac; stats never keep your words. Time saved assumes typing at 40 words a minute.")
                         .font(.caption).foregroundStyle(.tertiary)
                 }
-                .padding(20)
+                .padding(.horizontal, 36)
+                .padding(.bottom, 24)
             }
         }
     }
@@ -65,8 +80,7 @@ struct StatsView: View {
         let counts = days.map { store.data.days[StatsStore.dayKey($0)]?.words ?? 0 }
         let peak = max(counts.max() ?? 0, 1)
         return VStack(alignment: .leading, spacing: 8) {
-            Text("LAST 26 WEEKS")
-                .font(.caption.bold()).foregroundStyle(Brand.accent)
+            MonoLabel("Last 26 weeks")
             HStack(alignment: .top, spacing: 3) {
                 ForEach(0..<26, id: \.self) { week in
                     VStack(spacing: 3) {
@@ -82,6 +96,7 @@ struct StatsView: View {
                 }
             }
         }
+        .paneCard()
     }
 
     private func cellColor(words: Int, peak: Int) -> Color {
@@ -97,14 +112,13 @@ struct StatsView: View {
             store.data.apps.sorted { $0.value.words > $1.value.words }.prefix(8))
         let peak = max(top.first?.value.words ?? 0, 1)
         return VStack(alignment: .leading, spacing: 8) {
-            Text("WHERE YOU YAP")
-                .font(.caption.bold()).foregroundStyle(Brand.accent)
+            MonoLabel("Where you yap")
             ForEach(top, id: \.key) { name, stat in
                 HStack(spacing: 10) {
                     Text(name)
                         .font(.callout)
                         .lineLimit(1)
-                        .frame(width: 140, alignment: .leading)
+                        .frame(width: 90, alignment: .leading)
                     GeometryReader { geo in
                         Capsule()
                             .fill(Brand.accent.opacity(0.85))
@@ -119,6 +133,7 @@ struct StatsView: View {
                 }
             }
         }
+        .paneCard()
     }
 
     // MARK: - Formatting

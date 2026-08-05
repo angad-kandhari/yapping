@@ -166,6 +166,13 @@ final class ListenController {
                         raw: String(model.finalized.prefix(500)),
                         cleaned: String(model.finalized.prefix(500)),
                         appName: "Listen")
+                    model.storeID = TranscriptStore.shared.add(
+                        kind: .listen,
+                        title: "Listen \u{00B7} \(startedAt.formatted(date: .abbreviated, time: .shortened))",
+                        seconds: Date().timeIntervalSince(startedAt),
+                        words: model.finalized.split(whereSeparator: \.isWhitespace).count,
+                        text: model.finalized,
+                        summary: model.summary)
                 }
             }
         }

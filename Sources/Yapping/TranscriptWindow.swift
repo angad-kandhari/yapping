@@ -12,6 +12,9 @@ final class TranscriptModel: ObservableObject {
     @Published var failure: String?
     @Published var summary = ""
     @Published var summarizing = false
+    /// Set once the finished session lands in the transcripts library, so
+    /// later summaries update the stored copy too.
+    var storeID: UUID?
 
     var isEmpty: Bool { finalized.isEmpty && volatileTail.isEmpty }
 
@@ -25,6 +28,7 @@ final class TranscriptModel: ObservableObject {
         failure = nil
         summary = ""
         summarizing = false
+        storeID = nil
     }
 }
 
@@ -143,6 +147,9 @@ struct TranscriptView: View {
                 model.summarizing = false
                 if let notes {
                     model.summary = notes
+                    if let id = model.storeID {
+                        TranscriptStore.shared.updateSummary(id: id, summary: notes)
+                    }
                 } else {
                     model.failure = "Could not summarize. Is your cleanup provider (Settings > Cleanup) available?"
                 }

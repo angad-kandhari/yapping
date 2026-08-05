@@ -9,8 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let fnMonitor = FnKeyMonitor()
     private let transcriber = Transcriber()
     private var statusItem: StatusItem!
-    private lazy var settingsWindow = UtilityWindow(title: "Yapping Settings") { SettingsView() }
-    private lazy var historyWindow = UtilityWindow(title: "Yapping History") { HistoryView() }
+    private lazy var mainWindow = UtilityWindow(title: "Yapping") { MainWindowView() }
     private lazy var onboardingWindow = UtilityWindow(title: "Welcome to yapping") {
         OnboardingView(startOnTour: OnboardingView.allPermissionsGranted())
     }
@@ -54,8 +53,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MoveToApplications.offerIfNeeded()
 
         statusItem = StatusItem(
-            onSettings: { [weak self] in self?.settingsWindow.show() },
-            onHistory: { [weak self] in self?.historyWindow.show() },
+            onSettings: { [weak self] in self?.openMain(.settings) },
+            onHistory: { [weak self] in self?.openMain(.dictations) },
             onTranscribeFile: { [weak self] in self?.pickAndTranscribeFile() },
             onListen: { [weak self] in
                 self?.listenController.toggle()
@@ -164,6 +163,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         UpdateCheck.startQuietChecks { [weak self] available in
             self?.statusItem.setUpdateAvailable(available)
         }
+    }
+
+    private func openMain(_ section: MainSection) {
+        MainWindowState.shared.section = section
+        mainWindow.show()
     }
 
     /// Silence auto-stop for hands-free sessions (opt-in): about 2.5s of

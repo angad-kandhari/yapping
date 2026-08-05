@@ -64,7 +64,7 @@ final class StatusItem {
             menu.addItem(entry)
             return entry
         }
-        _ = add("History", #selector(MenuTarget.history), "h")
+        _ = add("Open Yapping", #selector(MenuTarget.history), "o")
         _ = add("Settings", #selector(MenuTarget.settings), ",")
         menu.addItem(.separator())
         _ = add("Transcribe File", #selector(MenuTarget.transcribeFile))

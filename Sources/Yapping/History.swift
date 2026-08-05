@@ -56,7 +56,7 @@ final class HistoryStore: ObservableObject {
     }
 }
 
-struct HistoryView: View {
+struct DictationsPane: View {
     @ObservedObject var store = HistoryStore.shared
     @State private var query = ""
     @State private var confirmClear = false
@@ -71,18 +71,14 @@ struct HistoryView: View {
         }
     }
 
-    @State private var tab = 0
-
     var body: some View {
-        BrandChrome(title: "history") {
-            BrandTabs(tabs: ["Dictations", "Stats"], selection: $tab)
-            if tab == 0 {
-                historyContent
-            } else {
-                StatsView()
-            }
+        VStack(spacing: 0) {
+            PaneHeader(title: "dictations",
+                       sub: "every dictation, raw and cleaned, side by side")
+                .padding(.horizontal, 36)
+                .padding(.top, 48)
+            historyContent
         }
-        .frame(minWidth: 520, minHeight: 420)
     }
 
     private var historyContent: some View {
@@ -97,7 +93,7 @@ struct HistoryView: View {
                     .padding(.vertical, 6)
                     .padding(.horizontal, 12)
                     .background(Capsule().fill(Color.primary.opacity(0.07)))
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 36)
                     .padding(.bottom, 8)
                 if filtered.isEmpty {
                     Text("Nothing matches \"\(query)\".")
@@ -146,7 +142,8 @@ struct HistoryView: View {
                         Button("Clear History", role: .destructive) { store.clear() }
                     }
             }
-            .padding(12)
+            .padding(.horizontal, 36)
+            .padding(.vertical, 12)
         }
     }
 }
