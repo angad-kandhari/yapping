@@ -97,6 +97,7 @@ struct DictationsPane: View {
     @State private var query = ""
     @State private var confirmClear = false
     @State private var rerunning: UUID?
+    @State private var showingDiff: Set<UUID> = []
 
     private var filtered: [HistoryEntry] {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -159,10 +160,8 @@ struct DictationsPane: View {
                                 }
                             }
                             Text(entry.cleaned)
-                            if entry.raw != entry.cleaned {
-                                Text("Raw: \(entry.raw)")
-                                    .font(.callout)
-                                    .foregroundStyle(.secondary)
+                            if entry.raw != entry.cleaned, !entry.raw.isEmpty {
+                                changes(for: entry)
                             }
                         }
                         .padding(.vertical, 4)
@@ -210,6 +209,58 @@ struct DictationsPane: View {
             }
             .padding(.horizontal, 36)
             .padding(.vertical, 12)
+        }
+    }
+
+    // MARK: - Corrections
+
+    /// The raw transcript stays visible by default, because "raw and cleaned,
+    /// side by side" is the promise this pane makes. The toggle swaps it for
+    /// a word-level diff, which answers the more useful question: what did
+    /// cleanup actually change?
+    @ViewBuilder
+    private func changes(for entry: HistoryEntry) -> some View {
+        let spans = TextDiff.words(from: entry.raw, to: entry.cleaned)
+        let showing = showingDiff.contains(entry.id)
+        HStack(spacing: 8) {
+            if let spans {
+                let count = TextDiff.corrections(spans)
+                Text(count == 1 ? "1 correction" : "\(count) corrections")
+                    .font(.caption).foregroundStyle(.tertiary)
+            }
+            Button(showing ? "Show raw" : "Show what changed") {
+                if showing {
+                    showingDiff.remove(entry.id)
+                } else {
+                    showingDiff.insert(entry.id)
+                }
+            }
+            .buttonStyle(.link)
+            .font(.caption)
+        }
+        if showing, let spans {
+            diffText(spans)
+                .font(.callout)
+                .textSelection(.enabled)
+        } else {
+            Text("Raw: \(entry.raw)")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    /// Struck through for what was said, accent for what was pasted instead.
+    private func diffText(_ spans: [TextDiff.Span]) -> Text {
+        spans.reduce(Text(verbatim: "")) { out, span in
+            let piece = Text(verbatim: span.text + " ")
+            switch span.kind {
+            case .same:
+                return out + piece.foregroundStyle(.secondary)
+            case .removed:
+                return out + piece.strikethrough().foregroundStyle(.tertiary)
+            case .added:
+                return out + piece.foregroundStyle(Brand.accent)
+            }
         }
     }
 

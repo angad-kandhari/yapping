@@ -48,6 +48,10 @@ final class ConfigStore: ObservableObject {
     @Published var voiceCommands: Bool { didSet { d.set(voiceCommands, forKey: "voiceCommands") } }
     /// BCP-47 language to paste in when a style does not name its own.
     @Published var defaultTargetLanguage: String { didSet { d.set(defaultTargetLanguage, forKey: "defaultTargetLanguage") } }
+    /// How hard cleanup corrects grammar when a style does not say: "light"
+    /// or "strict". Defaults to light, which is what every build before this
+    /// one did, so an update never quietly starts rewriting people's sentences.
+    @Published var grammarStrength: String { didSet { d.set(grammarStrength, forKey: "grammarStrength") } }
 
     private let d = UserDefaults.standard
 
@@ -89,6 +93,7 @@ final class ConfigStore: ObservableObject {
         blockSecureFields = d.object(forKey: "blockSecureFields") as? Bool ?? true
         voiceCommands = d.object(forKey: "voiceCommands") as? Bool ?? true
         defaultTargetLanguage = d.string(forKey: "defaultTargetLanguage") ?? ""
+        grammarStrength = d.string(forKey: "grammarStrength") ?? Grammar.light.rawValue
     }
 
     private func saveJSON<T: Encodable>(_ value: T, key: String) {

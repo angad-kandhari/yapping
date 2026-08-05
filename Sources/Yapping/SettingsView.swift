@@ -99,6 +99,16 @@ private struct GeneralSettings: View {
                 Text("If the provider fails or over-edits, the raw transcript is used. Words are never lost.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Section("Grammar") {
+                Picker("Correct grammar", selection: $config.grammarStrength) {
+                    ForEach(Grammar.allCases, id: \.rawValue) { level in
+                        Text(level.label).tag(level.rawValue)
+                    }
+                }
+                .disabled(!config.cleanupEnabled)
+                Text("Light fixes what it can without moving your words around. Strict may also reorder a sentence and change its tense, which is where spoken grammar usually goes wrong. Neither one adds facts you did not say, and a word it cannot confidently place is left exactly as you said it. A style can override this per app.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("Language out") {
                 Picker("Paste in", selection: $config.defaultTargetLanguage) {
                     Text("The language you spoke").tag("")
@@ -289,6 +299,12 @@ private struct StylesSettings: View {
                             Text("The language you spoke").tag("")
                             ForEach(Translation.targets, id: \.self) { code in
                                 Text(Translation.displayName(code)).tag(code)
+                            }
+                        }
+                        Picker("Correct grammar", selection: $style.grammar) {
+                            Text("Use the Settings default").tag("")
+                            ForEach(Grammar.allCases, id: \.rawValue) { level in
+                                Text(level.label).tag(level.rawValue)
                             }
                         }
                     }

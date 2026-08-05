@@ -16,9 +16,14 @@ struct Style: Codable, Identifiable, Equatable {
     var voiceCommands: Bool = true
     /// BCP-47 target language; empty inherits the global default.
     var targetLanguage: String = ""
+    /// "light" or "strict"; empty inherits the global setting. Per app,
+    /// because the right answer differs: an email wants correct sentences,
+    /// a chat message wants to sound like the person who sent it.
+    var grammar: String = ""
 
     init(id: UUID = UUID(), name: String, appPatterns: [String], prompt: String,
-         verbatim: Bool = false, voiceCommands: Bool = true, targetLanguage: String = "") {
+         verbatim: Bool = false, voiceCommands: Bool = true, targetLanguage: String = "",
+         grammar: String = "") {
         self.id = id
         self.name = name
         self.appPatterns = appPatterns
@@ -26,6 +31,7 @@ struct Style: Codable, Identifiable, Equatable {
         self.verbatim = verbatim
         self.voiceCommands = voiceCommands
         self.targetLanguage = targetLanguage
+        self.grammar = grammar
     }
 
     /// Hand-written so a style saved by an older build still decodes: the
@@ -40,6 +46,7 @@ struct Style: Codable, Identifiable, Equatable {
         verbatim = try c.decodeIfPresent(Bool.self, forKey: .verbatim) ?? false
         voiceCommands = try c.decodeIfPresent(Bool.self, forKey: .voiceCommands) ?? true
         targetLanguage = try c.decodeIfPresent(String.self, forKey: .targetLanguage) ?? ""
+        grammar = try c.decodeIfPresent(String.self, forKey: .grammar) ?? ""
     }
 
     /// Dictating prompts to AI assistants: terse, technical, no fluff.

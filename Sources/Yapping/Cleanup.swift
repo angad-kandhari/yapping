@@ -12,19 +12,22 @@ enum Cleanup {
     static var host: String { ConfigStore.shared.ollamaHost }
     static var model: String { ConfigStore.shared.ollamaModel }
 
-    private static let prompt = """
-    You clean up dictated text. You will be given a raw speech transcription. \
-    Return ONLY the cleaned text - no preamble, no quotes, no markdown, no explanation.
+    /// The two rules in the middle are the ones that move: see `Grammar` for
+    /// why preserving wording and correcting grammar cannot both be absolute.
+    private static func prompt(grammar: Grammar) -> String {
+        """
+        You clean up dictated text. You will be given a raw speech transcription. \
+        Return ONLY the cleaned text - no preamble, no quotes, no markdown, no explanation.
 
-    Rules:
-    - Remove filler words (um, uh, like, you know) and false starts
-    - Fix grammar, punctuation, capitalization, and obvious transcription errors
-    - Preserve the speaker's wording, meaning, tone, and sentence order
-    - Do NOT summarize, restructure, add, or omit content
-    - If the speaker corrects themselves (says "scratch that" or restates a sentence), keep only the corrected final version
-    - Never use em dashes; use commas, periods, or parentheses instead
-    - If the text is already clean, return it unchanged
-    """
+        Rules:
+        - Remove filler words (um, uh, like, you know) and false starts
+        - Fix grammar, punctuation, capitalization, and obvious transcription errors
+        \(grammar.rules)
+        - If the speaker corrects themselves (says "scratch that" or restates a sentence), keep only the corrected final version
+        - Never use em dashes; use commas, periods, or parentheses instead
+        - If the text is already clean, return it unchanged
+        """
+    }
 
     // MARK: - Public API
 
@@ -32,7 +35,9 @@ enum Cleanup {
         text: String, style: Style? = nil, fieldContext: String? = nil
     ) async -> String {
         guard ConfigStore.shared.cleanupEnabled else { return text }
-        var systemPrompt = prompt
+        let grammar = Grammar.resolve(
+            style: style, fallback: ConfigStore.shared.grammarStrength)
+        var systemPrompt = prompt(grammar: grammar)
         let words = ConfigStore.shared.dictionary
         if !words.isEmpty {
             systemPrompt += "\n- Prefer these exact spellings when they appear: "
@@ -59,14 +64,9 @@ enum Cleanup {
             maxTokens: max(500, text.count / 2)) else { return text }
         let cleaned = sanitize(raw)
 
-        // Cleanup only ever shortens or lightly edits. Much shorter means a
-        // summary or refusal; much longer means leaked reasoning or
-        // commentary. Either way the raw words are safer.
-        guard !cleaned.isEmpty,
-              cleaned.count >= Int(0.3 * Double(text.count)),
-              cleaned.count <= Int(1.5 * Double(text.count)) + 40 else {
-            return text
-        }
+        // The size guard lives on Grammar, because how much growth is
+        // believable depends on how much rewriting was asked for.
+        guard grammar.plausible(original: text, cleaned: cleaned) else { return text }
         return cleaned
     }
 
@@ -202,7 +202,12 @@ enum Cleanup {
         switch ConfigStore.shared.cleanupProvider {
         case "apple":
             if case .available = SystemLanguageModel.default.availability {
-                let session = LanguageModelSession(instructions: prompt)
+                // Warm the instructions that will actually be used, not a
+                // variant the next dictation immediately replaces.
+                let warmGrammar = Grammar.resolve(
+                    style: nil, fallback: ConfigStore.shared.grammarStrength)
+                let session = LanguageModelSession(
+                    instructions: prompt(grammar: warmGrammar))
                 session.prewarm()
                 Log.info("apple foundation model warm")
                 return
