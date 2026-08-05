@@ -14,7 +14,11 @@ jobs:
 
       - name: No em dashes anywhere
         run: |
-          if grep -rn "\u2014" Sources docs README.md CONTRIBUTING.md SECURITY.md 2>/dev/null; then
+          # -P for a real codepoint match: plain grep reads "\u2014" as the
+          # literal characters u2014, so this gate silently passed everything
+          # for its whole life. -I keeps a stray byte sequence inside a font
+          # or image from failing the build.
+          if grep -rnPI '\x{2014}' Sources docs README.md CONTRIBUTING.md SECURITY.md 2>/dev/null; then
             echo "::error::Em dashes are not used in this project. Use commas, colons, or two sentences."
             exit 1
           fi
