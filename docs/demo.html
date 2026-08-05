@@ -303,6 +303,10 @@
       <div class="hrow"><div class="meta"><span>10:41</span><span class="app">Mail</span><span class="act"><span>Copy</span><span>Paste again</span></span></div><div class="txt">Thanks for the report. The fix is in 1.6.0; the app will offer the update itself.</div></div>
       <div class="hrow"><div class="meta"><span>09:58</span><span class="app">Claude</span><span class="act"><span>Copy</span><span>Paste again</span></span></div><div class="txt">Refactor the session teardown so the analyzer finalizes before the engine rebuilds.</div><div class="raw">Raw: refactor the um session teardown so that the analyzer...</div></div>
       <div class="hrow"><div class="meta"><span>09:31</span><span class="app">Notes</span><span class="act"><span>Copy</span><span>Paste again</span></span></div><div class="txt">Grocery run: coffee, oat milk, the good bread from the corner place.</div></div>
+      <div class="hrow"><div class="meta"><span>09:14</span><span class="app">Terminal</span><span class="act"><span>Copy</span><span>Paste again</span></span></div><div class="txt">git rebase --onto main feature/overlay-and-styles</div></div>
+      <div class="hrow"><div class="meta"><span>08:52</span><span class="app">Messages</span><span class="act"><span>Copy</span><span>Paste again</span></span></div><div class="txt">Running ten minutes late, order me the usual.</div><div class="raw">Raw: um so I'm running like ten minutes late, uh order me...</div></div>
+      <div class="hrow"><div class="meta"><span>08:31</span><span class="app">Mail</span><span class="act"><span>Copy</span><span>Paste again</span></span></div><div class="txt">Attached is the revised proposal for Thursday. Happy to walk through it before the call.</div></div>
+      <div class="hrow"><div class="meta"><span>08:03</span><span class="app">Claude</span><span class="act"><span>Copy</span><span>Paste again</span></span></div><div class="txt">Explain why the analyzer needs finalizing before the engine rebuilds.</div><div class="raw">Raw: explain why the um analyzer needs finalizing before...</div></div>
     </div>
 
     <div class="pane" data-p="transcripts">
@@ -451,7 +455,7 @@ function animateStats() {
 document.querySelectorAll(".sw").forEach(s => s.addEventListener("click", () => s.classList.toggle("off")));
 
 document.getElementById("dk").addEventListener("click", () => document.body.classList.toggle("dark"));
-show("stats");
+show("history");
 
 // Scale the fixed 1120x690 window to whatever width the iframe gives us
 function fit() {
