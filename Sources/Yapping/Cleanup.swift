@@ -29,7 +29,7 @@ enum Cleanup {
     // MARK: - Public API
 
     static func polish(
-        _ text: String, style: Style? = nil, fieldContext: String? = nil
+        text: String, style: Style? = nil, fieldContext: String? = nil
     ) async -> String {
         guard ConfigStore.shared.cleanupEnabled else { return text }
         var systemPrompt = prompt

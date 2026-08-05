@@ -138,6 +138,8 @@ struct OnboardingView: View {
                  "Tap the globe key twice to talk without holding. Tap again or press Esc to finish.")
             move("text.cursor", "Edit by voice",
                  "Select any text, hold the globe key, and speak an instruction. The selection is rewritten.")
+            move("text.append", "Speak your punctuation",
+                 "Say \"new paragraph\", \"comma\", or \"question mark\" and you get the character. \"Scratch that\" deletes what you just said.")
             move("paperplane", "Say \"send it\"",
                  "End a dictation with \"send it\" and Return is pressed for you.")
             move("doc.badge.arrow.up", "Drop a file on the menu bar icon",

@@ -411,13 +411,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         return
                     }
                     output = edited
-                } else if self.activeStyle?.verbatim == true {
-                    output = ConfigStore.shared.applyTextRules(to: text)
                 } else {
-                    let cleaned = await Cleanup.polish(
-                        text, style: self.activeStyle, fieldContext: fieldContext)
-                    output = ConfigStore.shared.applyTextRules(to: cleaned)
+                    // Spoken formatting commands are applied before cleanup.
+                    // Line breaks split the text so the model never gets the
+                    // chance to "correct" a paragraph break away.
+                    let wantsCommands = ConfigStore.shared.voiceCommands
+                        && (self.activeStyle?.voiceCommands ?? true)
+                    let prepared = VoiceCommands.prepare(text, enabled: wantsCommands)
+
+                    var pieces: [String] = []
+                    if self.activeStyle?.verbatim == true {
+                        pieces = prepared.segments
+                    } else {
+                        for segment in prepared.segments {
+                            let cleaned = await Cleanup.polish(
+                                text: segment, style: self.activeStyle,
+                                fieldContext: fieldContext)
+                            pieces.append(cleaned)
+                        }
+                    }
+
+                    let rejoined = VoiceCommands.rejoin(pieces, prepared)
+                    output = ConfigStore.shared.applyTextRules(to: rejoined)
                 }
+
                 guard !self.cancelled else {
                     self.hud.hide()
                     return

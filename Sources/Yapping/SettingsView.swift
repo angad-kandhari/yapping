@@ -99,6 +99,11 @@ private struct GeneralSettings: View {
                 Text("If the provider fails or over-edits, the raw transcript is used. Words are never lost.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Section("Spoken commands") {
+                Toggle("Honor spoken formatting commands", isOn: $config.voiceCommands)
+                Text("Say \"new line\", \"new paragraph\", \"comma\", \"period\", \"question mark\", or \"exclamation mark\" and you get the character instead of the word. \"Scratch that\" drops what you just said; \"caps on\" and \"caps off\" title-case a stretch of words.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("Output") {
                 Toggle("Copy to clipboard instead of pasting", isOn: $config.copyInsteadOfPaste)
                 Toggle("Trailing space after each dictation", isOn: $config.trailingSpace)
