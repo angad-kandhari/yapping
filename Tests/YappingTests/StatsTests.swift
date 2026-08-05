@@ -76,4 +76,49 @@ final class StatsTests: XCTestCase {
         XCTAssertEqual(AppDelegate.stripSendCommand(from: "Send it!"), nil)  // nothing left
         XCTAssertNil(AppDelegate.stripSendCommand(from: "send it to the printer"))
     }
+
+    // MARK: - 2.5 additions
+
+    func testHourKeyIsZeroPadded() {
+        let noon = StatsStore.dayFormatter.date(from: "2026-08-05")!
+        XCTAssertEqual(StatsStore.hourKey(noon).count, 2)
+    }
+
+    func testHourHistogramSumsAcrossDays() {
+        let days = [
+            "2026-08-04": DayStat(words: 10, sessions: 1, seconds: 60, hours: ["09": 10]),
+            "2026-08-05": DayStat(words: 25, sessions: 2, seconds: 90, hours: ["09": 5, "14": 20]),
+        ]
+        let histogram = StatsStore.hourHistogram(days: days)
+        XCTAssertEqual(histogram[9], 15)
+        XCTAssertEqual(histogram[14], 20)
+        XCTAssertEqual(histogram[0], 0)
+        XCTAssertEqual(histogram.count, 24)
+    }
+
+    func testHourHistogramIgnoresNonsenseKeys() {
+        let days = ["2026-08-05": DayStat(words: 5, sessions: 1, seconds: 60, hours: ["99": 5, "ab": 3])]
+        XCTAssertEqual(StatsStore.hourHistogram(days: days).reduce(0, +), 0)
+    }
+
+    func testWpmSeriesLeavesGapsForUnmeasurableDays() {
+        let today = StatsStore.dayFormatter.date(from: "2026-08-05")!
+        let days = [
+            "2026-08-05": DayStat(words: 300, sessions: 2, seconds: 120),
+            "2026-08-04": DayStat(words: 200, sessions: 1, seconds: 0),
+        ]
+        let series = StatsStore.wpmSeries(days: days, lastN: 3, today: today)
+        let byDay = Dictionary(uniqueKeysWithValues: series.map { ($0.day, $0.wpm) })
+        XCTAssertEqual(byDay["2026-08-05"]!!, 150, accuracy: 0.01)
+        XCTAssertNil(byDay["2026-08-04"]!,
+                     "a day with no measured speaking time must be a gap, not a zero")
+        XCTAssertNil(byDay["2026-08-03"]!, "a day with no dictation at all is also a gap")
+    }
+
+    func testHourLabelReadsLikeAPerson() {
+        XCTAssertEqual(StatsView.hourLabel(0), "midnight")
+        XCTAssertEqual(StatsView.hourLabel(12), "noon")
+        XCTAssertEqual(StatsView.hourLabel(9), "9 am")
+        XCTAssertEqual(StatsView.hourLabel(15), "3 pm")
+    }
 }

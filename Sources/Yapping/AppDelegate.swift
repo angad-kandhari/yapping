@@ -487,10 +487,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.hud.finish()
                 HistoryStore.shared.add(
                     raw: text, cleaned: output,
-                    appName: self.targetApp?.localizedName ?? "Unknown")
+                    appName: self.targetApp?.localizedName ?? "Unknown",
+                    styleName: self.activeStyle?.name)
                 StatsStore.shared.record(
                     words: StatsStore.wordCount(output), seconds: heldFor,
-                    app: self.targetApp?.localizedName ?? "Unknown")
+                    app: self.targetApp?.localizedName ?? "Unknown",
+                    style: self.activeStyle?.name)
                 self.offerTips()
             } catch {
                 Log.error("dictation error: \(error)")

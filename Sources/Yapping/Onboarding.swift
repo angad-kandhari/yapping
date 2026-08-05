@@ -22,12 +22,7 @@ struct OnboardingView: View {
 
     /// The same test AppDelegate uses to decide whether to auto-open this
     /// window; keep the two in agreement.
-    static func allPermissionsGranted() -> Bool {
-        AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
-            && CGPreflightListenEventAccess()
-            && AXIsProcessTrusted()
-            && globeKeyDoesNothing()
-    }
+    static func allPermissionsGranted() -> Bool { Permissions.all }
 
     var body: some View {
         BrandChrome(title: "setup") {
@@ -179,21 +174,17 @@ struct OnboardingView: View {
     // MARK: - Checks
 
     private func refresh() {
-        mic = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
-        inputMonitoring = CGPreflightListenEventAccess()
-        accessibility = AXIsProcessTrusted()
-        globeKeyFree = Self.globeKeyDoesNothing()
+        mic = Permissions.microphone
+        inputMonitoring = Permissions.inputMonitoring
+        accessibility = Permissions.accessibility
+        globeKeyFree = Permissions.globeKeyFree
         Task {
             let up = await Cleanup.reachable()
             await MainActor.run { ollama = up }
         }
     }
 
-    static func globeKeyDoesNothing() -> Bool {
-        CFPreferencesCopyAppValue(
-            "AppleFnUsageType" as CFString, "com.apple.HIToolbox" as CFString
-        ) as? Int == 0
-    }
+    static func globeKeyDoesNothing() -> Bool { Permissions.globeKeyFree }
 
     private func openPane(_ pane: String?, keyboard: Bool = false) {
         let url = keyboard

@@ -279,6 +279,7 @@ private struct StylesSettings: View {
                             .font(.system(.body))
                             .frame(minHeight: 56)
                     }
+                    StyleTester(style: style)
                     Button(role: .destructive) {
                         styleToDelete = style
                     } label: { Text("Delete style") }
@@ -306,3 +307,93 @@ private struct StylesSettings: View {
     }
 }
 
+
+/// Author a prompt without having to dictate at it. Runs the real pipeline,
+/// because a tester that approximates the pipeline teaches the wrong lesson.
+private struct StyleTester: View {
+    let style: Style
+    @ObservedObject private var config = ConfigStore.shared
+    @AppStorage("styleTestSample") private var sample =
+        "um so i was thinking we could maybe ship the thing on friday you know"
+    @State private var result: String?
+    @State private var elapsed: Int?
+    @State private var running = false
+    @State private var expanded = false
+
+    var body: some View {
+        DisclosureGroup("Test this style", isExpanded: $expanded) {
+            VStack(alignment: .leading, spacing: 8) {
+                TextField("Say something the way you would dictate it", text: $sample, axis: .vertical)
+                    .lineLimit(2...4)
+                    .textFieldStyle(.roundedBorder)
+
+                HStack(spacing: 10) {
+                    Button(running ? "Running..." : "Test") { run() }
+                        .disabled(running || sample.isEmpty)
+                    if let elapsed {
+                        Text("\(elapsed) ms \u{00B7} \(providerName)")
+                            .font(.caption).foregroundStyle(.tertiary)
+                    }
+                }
+
+                if style.verbatim {
+                    Text("Verbatim style: text is pasted exactly as heard, so cleanup never runs. Spoken commands still apply.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else if !config.cleanupEnabled {
+                    Text("Cleanup is turned off in Settings, so the raw transcript is what gets pasted.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+
+                if let result {
+                    VStack(alignment: .leading, spacing: 4) {
+                        MonoLabel("Result")
+                        Text(result)
+                            .font(.callout)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(.quaternary.opacity(0.4)))
+                }
+            }
+            .padding(.top, 6)
+        }
+    }
+
+    private var providerName: String {
+        switch config.cleanupProvider {
+        case "apple": return "Apple Intelligence"
+        case "custom": return config.customModel.isEmpty ? "custom endpoint" : config.customModel
+        default: return config.ollamaModel
+        }
+    }
+
+    private func run() {
+        running = true
+        result = nil
+        let text = sample
+        let chosen = style
+        Task {
+            let started = Date()
+            // Exactly what a real dictation does, in the same order
+            let prepared = VoiceCommands.prepare(
+                text, enabled: config.voiceCommands && chosen.voiceCommands)
+            var pieces: [String] = []
+            for segment in prepared.segments {
+                if chosen.verbatim {
+                    pieces.append(segment)
+                } else {
+                    pieces.append(await Cleanup.polish(text: segment, style: chosen))
+                }
+            }
+            let joined = VoiceCommands.rejoin(pieces, prepared)
+            let final = config.applyTextRules(to: joined)
+            let ms = Int(Date().timeIntervalSince(started) * 1000)
+            await MainActor.run {
+                result = final
+                elapsed = ms
+                running = false
+            }
+        }
+    }
+}

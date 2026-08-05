@@ -21,6 +21,40 @@ enum AudioDevices {
         }
     }
 
+    /// The system's current input device, whatever the user picked in
+    /// System Settings. CoreAudio only, deliberately: Diagnostics must be
+    /// able to report the device without touching the AVAudioEngine that
+    /// Transcriber owns.
+    static func defaultInput() -> AudioInputDevice? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+        var id = AudioDeviceID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &id) == noErr,
+            let uid = stringProperty(id, kAudioDevicePropertyDeviceUID),
+            let name = stringProperty(id, kAudioObjectPropertyName) else { return nil }
+        return AudioInputDevice(uid: uid, name: name)
+    }
+
+    /// Sample rate and input channel count, the two numbers that explain
+    /// most "it heard nothing" reports.
+    static func format(forUID uid: String) -> (sampleRate: Double, channels: Int)? {
+        guard let id = deviceID(forUID: uid) else { return nil }
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyNominalSampleRate,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+        var rate = 0.0
+        var size = UInt32(MemoryLayout<Double>.size)
+        guard AudioObjectGetPropertyData(id, &address, 0, nil, &size, &rate) == noErr else {
+            return nil
+        }
+        return (rate, inputChannelCount(id))
+    }
+
     static func deviceID(forUID uid: String) -> AudioDeviceID? {
         allDeviceIDs().first {
             stringProperty($0, kAudioDevicePropertyDeviceUID) == uid
