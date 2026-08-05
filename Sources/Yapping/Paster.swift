@@ -26,7 +26,20 @@ enum Paster {
 
     static func paste(_ text: String) {
         let pasteboard = NSPasteboard.general
-        let previous = pasteboard.string(forType: .string)
+        // Snapshot every representation, not just plain text. Restoring only
+        // the string used to destroy an image, rich text, or copied files on
+        // the clipboard with every single dictation.
+        let previous = pasteboard.pasteboardItems?.compactMap { item -> NSPasteboardItem? in
+            let copy = NSPasteboardItem()
+            var kept = false
+            for type in item.types {
+                if let data = item.data(forType: type) {
+                    copy.setData(data, forType: type)
+                    kept = true
+                }
+            }
+            return kept ? copy : nil
+        } ?? []
 
         pasteboard.clearContents()
         pasteboard.declareTypes([.string, concealedType], owner: nil)
@@ -43,12 +56,11 @@ enum Paster {
         vDown?.post(tap: .cghidEventTap)
         vUp?.post(tap: .cghidEventTap)
 
-        if let previous {
-            DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
-                let pb = NSPasteboard.general
-                pb.clearContents()
-                pb.setString(previous, forType: .string)
-            }
+        guard !previous.isEmpty else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            let pb = NSPasteboard.general
+            pb.clearContents()
+            pb.writeObjects(previous)
         }
     }
 }

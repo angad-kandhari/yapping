@@ -60,6 +60,26 @@ final class HistoryStore: ObservableObject {
         }
     }
 
+    func remove(id: UUID) {
+        DispatchQueue.main.async {
+            self.entries.removeAll { $0.id == id }
+            self.save()
+        }
+    }
+
+    /// Re-running cleanup writes the new text back over the old one; the raw
+    /// transcript is never touched, so this stays reversible in spirit.
+    func replace(id: UUID, cleaned: String) {
+        DispatchQueue.main.async {
+            guard let index = self.entries.firstIndex(where: { $0.id == id }) else { return }
+            let old = self.entries[index]
+            self.entries[index] = HistoryEntry(
+                id: old.id, date: old.date, appName: old.appName,
+                raw: old.raw, cleaned: cleaned, styleName: old.styleName)
+            self.save()
+        }
+    }
+
     func clear() {
         entries = []
         save()
@@ -73,8 +93,10 @@ final class HistoryStore: ObservableObject {
 
 struct DictationsPane: View {
     @ObservedObject var store = HistoryStore.shared
+    @ObservedObject var config = ConfigStore.shared
     @State private var query = ""
     @State private var confirmClear = false
+    @State private var rerunning: UUID?
 
     private var filtered: [HistoryEntry] {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -122,7 +144,15 @@ struct DictationsPane: View {
                                     .font(.caption).foregroundStyle(.secondary)
                                 Text(entry.appName)
                                     .font(.caption).foregroundStyle(.secondary)
+                                if let style = entry.styleName {
+                                    Text(style)
+                                        .font(.caption2)
+                                        .foregroundStyle(Brand.accent)
+                                }
                                 Spacer()
+                                if rerunning == entry.id {
+                                    ProgressView().controlSize(.small)
+                                }
                                 Button("Copy") {
                                     NSPasteboard.general.clearContents()
                                     NSPasteboard.general.setString(entry.cleaned, forType: .string)
@@ -136,6 +166,21 @@ struct DictationsPane: View {
                             }
                         }
                         .padding(.vertical, 4)
+                        .contextMenu {
+                            Button("Copy raw transcript") {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(entry.raw, forType: .string)
+                            }
+                            Menu("Re-run cleanup with") {
+                                Button("No style") { rerun(entry, style: nil) }
+                                ForEach(config.styles) { style in
+                                    Button(style.name) { rerun(entry, style: style) }
+                                }
+                            }
+                            .disabled(entry.raw.isEmpty)
+                            Divider()
+                            Button("Delete", role: .destructive) { store.remove(id: entry.id) }
+                        }
                     }
                     .scrollContentBackground(.hidden)
                 }
@@ -148,6 +193,12 @@ struct DictationsPane: View {
                         .font(.caption).foregroundStyle(.tertiary)
                 }
                 Spacer()
+                Menu("Export") {
+                    Button("Markdown...") { export(.markdown) }
+                    Button("JSON...") { export(.json) }
+                }
+                .fixedSize()
+                .disabled(store.entries.isEmpty)
                 Button("Clear history", role: .destructive) { confirmClear = true }
                     .disabled(store.entries.isEmpty)
                     .confirmationDialog(
@@ -160,5 +211,69 @@ struct DictationsPane: View {
             .padding(.horizontal, 36)
             .padding(.vertical, 12)
         }
+    }
+
+    // MARK: - Actions
+
+    /// Re-run cleanup over the original transcript. The raw text is kept, so
+    /// a style that makes things worse can simply be run again.
+    private func rerun(_ entry: HistoryEntry, style: Style?) {
+        rerunning = entry.id
+        Task {
+            let cleaned = await Cleanup.polish(text: entry.raw, style: style)
+            await MainActor.run {
+                store.replace(id: entry.id, cleaned: cleaned)
+                rerunning = nil
+            }
+        }
+    }
+
+    private enum ExportFormat { case markdown, json }
+
+    private func export(_ format: ExportFormat) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = format == .markdown
+            ? "yapping-dictations.md" : "yapping-dictations.json"
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        let entries = filtered
+        do {
+            switch format {
+            case .markdown:
+                try HistoryExport.markdown(entries).write(to: url, atomically: true, encoding: .utf8)
+            case .json:
+                try HistoryExport.json(entries).write(to: url, options: .atomic)
+            }
+        } catch {
+            Log.error("history export failed: \(error)")
+        }
+    }
+}
+
+/// Serializers kept pure so they can be tested without a save panel.
+enum HistoryExport {
+    static func markdown(_ entries: [HistoryEntry]) -> String {
+        var out = ["# yapping dictations", ""]
+        for entry in entries {
+            out.append("## \(entry.date.formatted(date: .abbreviated, time: .shortened)) \u{00B7} \(entry.appName)")
+            if let style = entry.styleName {
+                out.append("_style: \(style)_")
+            }
+            out.append("")
+            out.append(entry.cleaned)
+            if entry.raw != entry.cleaned, !entry.raw.isEmpty {
+                out.append("")
+                out.append("> raw: \(entry.raw)")
+            }
+            out.append("")
+        }
+        return out.joined(separator: "\n")
+    }
+
+    static func json(_ entries: [HistoryEntry]) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        return try encoder.encode(entries)
     }
 }
