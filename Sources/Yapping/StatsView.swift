@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The stats pane: everything Wispr Flow's dashboard shows, computed and
+/// The stats pane: the numbers a dictation app can show you, computed and
 /// stored only on this Mac. Numbers only; stats never keep your words.
 struct StatsPane: View {
     var body: some View {
