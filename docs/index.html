@@ -96,14 +96,17 @@
       <span style="font-size: 17px; font-weight: 700; letter-spacing: -0.01em;">yapping</span>
     </div>
     <div class="navlinks" style="display: flex; align-items: center; gap: 24px; font-size: 14px;">
+      <a href="#demo">demo</a>
       <a href="#receipts">receipts</a>
       <a href="#app">the app</a>
       <a href="#how">how</a>
       <a href="#faq">faq</a>
+      <a href="https://github.com/angad-kandhari/yapping/stargazers" aria-label="GitHub stars"><img src="https://img.shields.io/github/stars/angad-kandhari/yapping?style=flat-square&labelColor=1A1A19&color=FF5A1F&label=%E2%98%85" alt="GitHub stars" height="20" style="display:block; border-radius: 4px;"></a>
       <a class="gh-mark" data-win="https://github.com/angad-kandhari/yapping-windows" data-linux="https://github.com/angad-kandhari/yapping-linux" href="https://github.com/angad-kandhari/yapping" aria-label="yapping on GitHub"><svg width="20" height="20"><use href="#octo"></use></svg></a>
       <a class="btn keep" href="#download" style="padding: 9px 20px; font-size: 12px;">Download</a>
     </div>
   </nav>
+  <a href="https://github.com/angad-kandhari/yapping/releases/tag/v2.0.0" style="display: block; text-align: center; padding: 10px 16px; background: color-mix(in srgb, var(--yap-accent) 13%, transparent); border-bottom: 1px solid rgba(244,244,242,0.08); font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--yap-accent); letter-spacing: 0.04em;">NEW &middot; yapping 2.0: one window, seven sections, a transcripts library, notarized downloads &rarr;</a>
 
   <header class="hero" style="position: relative; min-height: 820px; overflow: hidden;">
     <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 24px; padding: 88px 48px 0;">
@@ -148,7 +151,16 @@
     </div>
   </div>
 
-  <section style="padding: 112px 64px 72px; max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px;">
+  <section id="demo" style="padding: 112px 64px 40px; max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px;">
+    <span class="mono" style="font-size: 12px; color: #9B9B98; letter-spacing: 0.06em;">THE 2.0 APP, IN YOUR BROWSER</span>
+    <h2 style="margin: 0; font-weight: 900; font-size: clamp(40px, 5vw, 64px); line-height: 1.02; letter-spacing: -0.02em; text-transform: uppercase;">Play with it<br>before you <span style="color: var(--yap-accent);">download it.</span></h2>
+    <div style="border-radius: 16px; overflow: hidden; border: 1px solid rgba(244,244,242,0.10); background: #0B0B0A;">
+      <iframe src="demo.html" loading="lazy" title="yapping 2.0 interactive demo" style="display: block; width: 100%; aspect-ratio: 1120 / 690; border: 0;"></iframe>
+    </div>
+    <p class="mono" style="margin: 0; font-size: 11.5px; color: #5C5C5A;">a faithful replica, right down to the hover on the rail. the real one is a small download away and types where your cursor is.</p>
+  </section>
+
+  <section style="padding: 72px 64px 72px; max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px;">
     <span class="mono" style="font-size: 12px; color: #9B9B98; letter-spacing: 0.06em;">RAW YAP, HELD KEY, 11 SECONDS</span>
     <p id="typeline" style="margin: 0; font-weight: 900; font-size: clamp(40px, 5vw, 64px); line-height: 1.02; letter-spacing: -0.02em; text-transform: uppercase; min-height: 3.1em;"></p>
     <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
@@ -246,22 +258,77 @@
     </div>
   </section>
 
-  <section style="padding: 40px 64px 96px; max-width: 1180px; margin: 0 auto;">
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;">
-      <div class="card" style="padding: 24px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">HANDS-FREE</span><p style="margin: 8px 0 0; font-size: 14px; color: #9B9B98; line-height: 1.5;">Double-tap the globe key to talk without holding. Say "send it" and the message fires with zero keypresses.</p></div>
-      <div class="card" style="padding: 24px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">VOICE EDIT</span><p style="margin: 8px 0 0; font-size: 14px; color: #9B9B98; line-height: 1.5;">Select text, hold the key, say "make this more formal". Rewritten in place, or left alone if the model fumbles.</p></div>
-      <div class="card" style="padding: 24px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">FAST</span><p style="margin: 8px 0 0; font-size: 14px; color: #9B9B98; line-height: 1.5;">Audio streams into the recognizer while you talk. Text lands the moment you release, first word included.</p></div>
-      <div class="card" style="padding: 24px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">ZERO SETUP</span><p style="margin: 8px 0 0; font-size: 14px; color: #9B9B98; line-height: 1.5;">Apple's on-device model cleans your transcript out of the box. Ollama and custom endpoints for the tinkerers.</p></div>
-      <div class="card" style="padding: 24px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">PROMPT MODE</span><p style="margin: 8px 0 0; font-size: 14px; color: #9B9B98; line-height: 1.5;">Dictating to Claude or ChatGPT stays terse and keeps file paths, flags, and identifiers exactly as spoken.</p></div>
-      <div class="card" style="padding: 24px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">LISTEN</span><p style="margin: 8px 0 0; font-size: 14px; color: #9B9B98; line-height: 1.5;">Transcribe whatever your Mac is playing: lectures, podcasts, the other side of a call. Live, on-device, saved to a file when you stop.</p></div>
-      <div class="card" style="padding: 24px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">FILES</span><p style="margin: 8px 0 0; font-size: 14px; color: #9B9B98; line-height: 1.5;">Drop an audio or video file on the menu bar icon and get the transcript many times faster than real time.</p></div>
-      <div class="card" style="padding: 24px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">SCRATCH THAT</span><p style="margin: 8px 0 0; font-size: 14px; color: #9B9B98; line-height: 1.5;">Correct yourself mid-sentence and only the final version survives. Like the demo above, which was one take.</p></div>
-      <div class="card" style="padding: 24px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">LIVE PREVIEW</span><p style="margin: 8px 0 0; font-size: 14px; color: #9B9B98; line-height: 1.5;">Your words appear above the Dock as you speak, so you can see the recognizer keeping up before you let go.</p></div>
-      <div class="card" style="padding: 24px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">NOTES</span><p style="margin: 8px 0 0; font-size: 14px; color: #9B9B98; line-height: 1.5;">One click turns a Listen session or file transcript into a TL;DR, key points, and action items. Fully local, like everything else.</p></div>
-      <div class="card" style="padding: 24px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">STATS</span><p style="margin: 8px 0 0; font-size: 14px; color: #9B9B98; line-height: 1.5;">Words, pace, streaks, a six-month heatmap, and where you yap most. Computed on your Mac, never phoned home, never your words.</p></div>
-      <div class="card" style="padding: 24px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">ONE WINDOW</span><p style="margin: 8px 0 0; font-size: 14px; color: #9B9B98; line-height: 1.5;">A proper app since 2.0: an icon rail that expands on hover, seven sections, and a status badge that always shows your local model.</p></div>
+  <section style="padding: 40px 64px 96px; max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px;">
+    <span class="mono" style="font-size: 12px; color: #9B9B98; letter-spacing: 0.06em;">THE HEADLINERS</span>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px;">
+      <div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px; background: #1A1A19; border-radius: 999px; padding: 12px 18px; align-self: flex-start; max-width: 100%;">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--yap-accent); flex: none;"></span>
+          <span style="display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; flex: none;">
+            <span class="anim" style="width: 3px; height: 12px; background: #F4F4F2; border-radius: 2px; transform-origin: bottom; animation: yapbar 0.8s cubic-bezier(0.22,1,0.36,1) infinite;"></span>
+            <span class="anim" style="width: 3px; height: 9px; background: #F4F4F2; border-radius: 2px; transform-origin: bottom; animation: yapbar 0.7s cubic-bezier(0.22,1,0.36,1) 0.2s infinite;"></span>
+            <span class="anim" style="width: 3px; height: 13px; background: #F4F4F2; border-radius: 2px; transform-origin: bottom; animation: yapbar 0.75s cubic-bezier(0.22,1,0.36,1) 0.1s infinite;"></span>
+          </span>
+          <span class="mono" style="font-size: 11px; color: #F4F4F2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">…so I can see every word land</span>
+          <span class="mono" style="font-size: 10px; color: #5C5C5A; flex: none;">0:07</span>
+        </div>
+        <div>
+          <span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">LIVE PREVIEW</span>
+          <p style="margin: 8px 0 0; font-size: 14px; color: #9B9B98; line-height: 1.5;">Your words appear above the Dock as you speak, in a pill that stays through cleanup and flashes green when the text lands. You never talk blind.</p>
+        </div>
+      </div>
+      <div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="background: #1A1A19; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px;">
+          <span class="mono" style="font-size: 9px; color: var(--yap-accent); letter-spacing: 0.1em;">TL;DR</span>
+          <span style="font-size: 12px; color: #F4F4F2; line-height: 1.4;">Ship Thursday; Priya owns the beta list.</span>
+          <span class="mono" style="font-size: 9px; color: var(--yap-accent); letter-spacing: 0.1em; margin-top: 2px;">ACTION ITEMS</span>
+          <span style="font-size: 11.5px; color: #9B9B98; line-height: 1.5;">&ndash; send the invite copy by noon<br>&ndash; book the launch retro</span>
+        </div>
+        <div>
+          <span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">LISTEN &rarr; NOTES</span>
+          <p style="margin: 8px 0 0; font-size: 14px; color: #9B9B98; line-height: 1.5;">Transcribe whatever your Mac is playing, then one click turns an hour of meeting into a TL;DR, key points, and action items. Fully local, kept in your transcripts library.</p>
+        </div>
+      </div>
+      <div class="card" style="padding: 24px; display: flex; flex-direction: column; gap: 14px;">
+        <div id="miniheat" style="background: #1A1A19; border-radius: 12px; padding: 16px 18px; display: flex; gap: 3px;"></div>
+        <div>
+          <span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">STATS</span>
+          <p style="margin: 8px 0 0; font-size: 14px; color: #9B9B98; line-height: 1.5;">Words, pace, streaks, time saved versus typing, and where you yap most. Computed on your Mac, never phoned home, never your words.</p>
+        </div>
+      </div>
+    </div>
+    <span class="mono" style="font-size: 12px; color: #9B9B98; letter-spacing: 0.06em; margin-top: 22px;">AND THE REST OF THE KIT</span>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;">
+      <div class="card" style="padding: 20px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">HANDS-FREE</span><p style="margin: 7px 0 0; font-size: 13.5px; color: #9B9B98; line-height: 1.5;">Double-tap the globe key to talk without holding. Say "send it" and the message fires itself.</p></div>
+      <div class="card" style="padding: 20px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">VOICE EDIT</span><p style="margin: 7px 0 0; font-size: 13.5px; color: #9B9B98; line-height: 1.5;">Select text, hold the key, say "make this more formal". Rewritten in place.</p></div>
+      <div class="card" style="padding: 20px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">FAST</span><p style="margin: 7px 0 0; font-size: 13.5px; color: #9B9B98; line-height: 1.5;">Audio streams into the recognizer while you talk. Text lands the moment you release.</p></div>
+      <div class="card" style="padding: 20px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">ZERO SETUP</span><p style="margin: 7px 0 0; font-size: 13.5px; color: #9B9B98; line-height: 1.5;">Apple's on-device model cleans transcripts out of the box. Ollama and custom endpoints for tinkerers.</p></div>
+      <div class="card" style="padding: 20px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">PROMPT MODE</span><p style="margin: 7px 0 0; font-size: 13.5px; color: #9B9B98; line-height: 1.5;">Dictating to Claude or ChatGPT stays terse and keeps paths, flags, and identifiers verbatim.</p></div>
+      <div class="card" style="padding: 20px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">FILES</span><p style="margin: 7px 0 0; font-size: 13.5px; color: #9B9B98; line-height: 1.5;">Drop audio or video on the menu bar icon; transcript arrives faster than real time.</p></div>
+      <div class="card" style="padding: 20px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">SCRATCH THAT</span><p style="margin: 7px 0 0; font-size: 13.5px; color: #9B9B98; line-height: 1.5;">Correct yourself mid-sentence and only the final version survives.</p></div>
+      <div class="card" style="padding: 20px;"><span class="mono" style="font-size: 10px; color: var(--yap-accent); letter-spacing: 0.08em;">ONE WINDOW</span><p style="margin: 7px 0 0; font-size: 13.5px; color: #9B9B98; line-height: 1.5;">An icon rail that expands on hover, seven sections, and your local model always in view. Try it above.</p></div>
     </div>
   </section>
+  <script>
+    (function () {
+      var heat = document.getElementById("miniheat");
+      if (!heat) return;
+      var seed = 7;
+      function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+      for (var w = 0; w < 16; w++) {
+        var col = document.createElement("div");
+        col.style.cssText = "display:flex;flex-direction:column;gap:3px;flex:1;";
+        for (var d = 0; d < 5; d++) {
+          var c = document.createElement("span");
+          var v = rnd();
+          c.style.cssText = "display:block;width:100%;aspect-ratio:1;border-radius:2.5px;background:" +
+            (v > 0.4 ? "rgba(255,90,31," + (0.25 + 0.75 * v).toFixed(2) + ")" : "rgba(244,244,242,0.08)");
+          col.appendChild(c);
+        }
+        heat.appendChild(col);
+      }
+    })();
+  </script>
 
   <section id="how" style="position: relative; padding: 128px 48px 96px; display: flex; flex-direction: column; align-items: center; gap: 36px; overflow: hidden; border-top: 1px solid rgba(244,244,242,0.10);">
     <h2 style="margin: 0; font-weight: 900; font-size: clamp(48px, 7vw, 104px); line-height: 0.92; letter-spacing: -0.02em; text-transform: uppercase; text-align: center;">This key is<br>worth <span style="color: var(--yap-accent);">$144/yr.</span></h2>
@@ -305,8 +372,8 @@
         <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.5; color: #9B9B98; max-width: 700px;">macOS 26 on Apple Silicon, 64-bit Windows 10/11, or a 64-bit Linux desktop (X11 or Wayland) on a 2024-era distro or newer (Ubuntu 24.04+, Fedora 40+, Debian 13+) for the betas. On the Mac, cleanup works out of the box with Apple's on-device model; Ollama and OpenAI-compatible endpoints are there for tinkerers. Without any of them, yapping pastes accurate raw transcripts.</p>
       </details>
       <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
-        <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700;"><span>Why does macOS warn me about the downloaded app?</span><span class="yap-x" style="font-size: 22px; color: var(--yap-accent);">+</span></summary>
-        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.5; color: #9B9B98; max-width: 700px;">Releases are not notarized; that requires paying Apple $99 a year, and this app costs $0 forever. Allow it once under System Settings, Privacy &amp; Security, or skip the warning entirely by building from source. The code is public; read it first if you like.</p>
+        <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700;"><span>Will macOS warn me about the downloaded app?</span><span class="yap-x" style="font-size: 22px; color: var(--yap-accent);">+</span></summary>
+        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.5; color: #9B9B98; max-width: 700px;">It shouldn't anymore: releases from 2.0 onward are signed with a Developer ID and notarized by Apple, so macOS opens them without complaint. If you're on an older build, either update from inside the app (which skips Gatekeeper entirely) or allow it once under System Settings, Privacy &amp; Security. Building from source always works too; the code is public, read it first if you like.</p>
       </details>
       <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
         <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700;"><span>Is the Windows app the same?</span><span class="yap-x" style="font-size: 22px; color: var(--yap-accent);">+</span></summary>
@@ -318,7 +385,7 @@
       </details>
       <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
         <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700;"><span>Is my audio or text stored anywhere?</span><span class="yap-x" style="font-size: 22px; color: var(--yap-accent);">+</span></summary>
-        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.5; color: #9B9B98; max-width: 700px;">Audio is never written to disk; it streams from the mic straight into the on-device recognizer. Your last 20 dictations are kept in a local history file so you can inspect what cleanup changed, and you can clear it any time.</p>
+        <p style="margin: 0; padding: 0 0 20px; font-size: 14px; line-height: 1.5; color: #9B9B98; max-width: 700px;">Audio is never written to disk; it streams from the mic straight into the on-device recognizer. Your last 200 dictations are kept in a local, searchable history file so you can inspect what cleanup changed, and you can clear it any time.</p>
       </details>
       <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
         <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700;"><span>Does it work in every app?</span><span class="yap-x" style="font-size: 22px; color: var(--yap-accent);">+</span></summary>
@@ -348,6 +415,7 @@
       <span style="color: #F4F4F2; font-weight: 700;">yapping</span>
     </div>
     <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
+      <a href="https://github.com/angad-kandhari/yapping/stargazers" aria-label="GitHub stars"><img src="https://img.shields.io/github/stars/angad-kandhari/yapping?style=flat-square&labelColor=1A1A19&color=FF5A1F&label=%E2%98%85" alt="GitHub stars" height="20" style="display:block; border-radius: 4px;"></a>
       <a class="gh-mark" data-win="https://github.com/angad-kandhari/yapping-windows" data-linux="https://github.com/angad-kandhari/yapping-linux" href="https://github.com/angad-kandhari/yapping" aria-label="yapping on GitHub"><svg width="18" height="18"><use href="#octo"></use></svg></a>
       <a href="https://github.com/angad-kandhari/yapping" style="color: #9B9B98;">macOS source</a>
       <a href="https://github.com/angad-kandhari/yapping-windows" style="color: #9B9B98;">Windows source</a>
