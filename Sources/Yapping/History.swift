@@ -71,11 +71,18 @@ struct HistoryView: View {
         }
     }
 
+    @State private var tab = 0
+
     var body: some View {
         BrandChrome(title: "history") {
-            historyContent
+            BrandTabs(tabs: ["Dictations", "Stats"], selection: $tab)
+            if tab == 0 {
+                historyContent
+            } else {
+                StatsView()
+            }
         }
-        .frame(minWidth: 500, minHeight: 400)
+        .frame(minWidth: 520, minHeight: 420)
     }
 
     private var historyContent: some View {

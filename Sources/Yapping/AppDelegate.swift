@@ -11,7 +11,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: StatusItem!
     private lazy var settingsWindow = UtilityWindow(title: "Yapping Settings") { SettingsView() }
     private lazy var historyWindow = UtilityWindow(title: "Yapping History") { HistoryView() }
-    private lazy var onboardingWindow = UtilityWindow(title: "Welcome to yapping") { OnboardingView() }
+    private lazy var onboardingWindow = UtilityWindow(title: "Welcome to yapping") {
+        OnboardingView(startOnTour: OnboardingView.allPermissionsGranted())
+    }
     private lazy var updatesWindow = UtilityWindow(title: "Yapping Updates") { UpdatesView() }
     private let listenController = ListenController()
     private let fileModel = TranscriptModel()
@@ -80,13 +82,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { await FileTranscriber.transcribe(url: url, into: self.fileModel) }
         }
 
-        // First run, or any missing grant: open the setup assistant
-        let ready = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
-            && CGPreflightListenEventAccess()
-            && AXIsProcessTrusted()
-        if !ready {
+        // First run, or any missing grant: open the setup assistant.
+        // (Same test the assistant itself uses; the two must agree.)
+        if !OnboardingView.allPermissionsGranted() {
+            onboardingWindow.show()
+        } else if !UserDefaults.standard.bool(forKey: "tourSeen") {
+            // Fully set up but never toured: show "the moves" exactly once
             onboardingWindow.show()
         }
+        UserDefaults.standard.set(true, forKey: "tourSeen")
 
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { granted, _ in
             if !granted {
@@ -430,11 +434,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 StatsStore.shared.record(
                     words: StatsStore.wordCount(output), seconds: heldFor,
                     app: self.targetApp?.localizedName ?? "Unknown")
+                self.offerTips()
             } catch {
                 Log.error("dictation error: \(error)")
                 Sound.play("Basso")
                 Self.notify("Dictation failed", body: "\(error.localizedDescription)")
                 self.hud.hide()
+            }
+        }
+    }
+
+    /// At most three one-time tips, tied to real usage, never repeated.
+    /// Not nagging users is part of the brand.
+    private func offerTips() {
+        let d = UserDefaults.standard
+        let count = d.integer(forKey: "tipSessionCount") + 1
+        d.set(count, forKey: "tipSessionCount")
+        if count == 10 {
+            Self.notify("Did you know?",
+                        body: "Select any text, hold the globe key, and speak an instruction. Yapping rewrites the selection.")
+        } else if count == 25 {
+            Self.notify("Did you know?",
+                        body: "End a dictation with \"send it\" and the message goes out with zero keypresses.")
+        }
+        if activeStyle == nil, !d.bool(forKey: "tipStyles"),
+           let bundleID = targetApp?.bundleIdentifier?.lowercased(),
+           ["slack", "discord", "messages", "telegram", "whatsapp", "teams"]
+               .contains(where: { bundleID.contains($0) }) {
+            let chats = d.integer(forKey: "tipChatCount") + 1
+            d.set(chats, forKey: "tipChatCount")
+            if chats == 3 {
+                d.set(true, forKey: "tipStyles")
+                Self.notify("Did you know?",
+                            body: "Styles adapt your writing per app. Give this one a casual voice in Settings > Styles.")
             }
         }
     }

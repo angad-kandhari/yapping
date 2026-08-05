@@ -282,7 +282,19 @@ private final class DropView: NSView {
     required init?(coder: NSCoder) { fatalError() }
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        .copy
+        // Light up so the drop target is discoverable mid-drag
+        wantsLayer = true
+        layer?.cornerRadius = 4
+        layer?.backgroundColor = Brand.accentNSColor.withAlphaComponent(0.35).cgColor
+        return .copy
+    }
+
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        layer?.backgroundColor = nil
+    }
+
+    override func draggingEnded(_ sender: NSDraggingInfo) {
+        layer?.backgroundColor = nil
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
