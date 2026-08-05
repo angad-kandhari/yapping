@@ -18,13 +18,22 @@
   :root { --yap-accent: #FF5A1F; }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
-  html, body { margin: 0; background: #0E0E0E; color: #F4F4F2; font-family: 'Geist', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  html, body { margin: 0; background: #0A0A09; color: #F4F4F2; font-family: 'Geist', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
   a { color: #F4F4F2; text-decoration: none; transition: opacity 160ms ease; }
   a:hover { opacity: 0.7; }
   .mono { font-family: 'Geist Mono', monospace; }
-  .btn { background: #F4F4F2; color: #0E0E0E; border-radius: 999px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 4px 14px rgba(0,0,0,0.30); }
-  .btn:hover { background: #FFFFFF; opacity: 1; }
-  .ghost { border: 1px solid rgba(244,244,242,0.20); border-radius: 999px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+  .btn { background: var(--yap-accent); color: #141210; border-radius: 10px; font-weight: 700; box-shadow: 0 6px 20px rgba(255,90,31,0.25); }
+  .btn:hover { background: #FF6D3A; opacity: 1; }
+  .ghost { border: 1px solid rgba(244,244,242,0.20); border-radius: 10px; font-weight: 600; }
+  .yaplogo { display: inline-flex; align-items: center; gap: 2.4px; height: 18px; }
+  .yaplogo i { width: 3px; border-radius: 2px; background: var(--yap-accent); transform-origin: center; animation: logobreathe 2.6s ease-in-out infinite; }
+  .yaplogo i:nth-child(1) { height: 5px; animation-delay: 0s; }
+  .yaplogo i:nth-child(2) { height: 11px; animation-delay: .35s; }
+  .yaplogo i:nth-child(3) { height: 18px; animation-delay: .7s; }
+  .yaplogo i:nth-child(4) { height: 8px; animation-delay: 1.05s; }
+  .yaplogo i:nth-child(5) { height: 13px; animation-delay: 1.4s; }
+  .yaplogo i:nth-child(6) { height: 4px; animation-delay: 1.75s; }
+  @keyframes logobreathe { 0%, 100% { transform: scaleY(0.72); } 50% { transform: scaleY(1.15); } }
   .gh-mark { display: inline-flex; align-items: center; color: #9B9B98; transition: color .15s ease, transform .15s ease; }
   .gh-mark:hover { color: #F4F4F2; opacity: 1; transform: translateY(-1px); }
 
@@ -43,7 +52,6 @@
   .card { background: #1A1A19; border-radius: 16px; box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px rgba(0,0,0,0.35); transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1); }
   .card:hover { transform: translateY(-2px); }
   @media (max-width: 900px) {
-    .invoice { position: static !important; margin: 12px auto !important; transform: none !important; }
     header.hero { min-height: 0 !important; padding-bottom: 40px; }
     .navlinks a:not(.keep) { display: none; }
     .navtag { display: none; }
@@ -53,7 +61,7 @@
 </style>
 </head>
 <body>
-<div style="background: #0E0E0E; min-height: 100vh; overflow-x: hidden;">
+<div style="background: #0A0A09; min-height: 100vh; overflow-x: hidden;">
   <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
     <defs>
       <path id="lsq" d="M512 0C289.53 0 172.55 0 89.06 45.53A360 360 0 0 0 45.53 89.06C0 172.55 0 289.53 0 512s0 339.45 45.53 422.94a360 360 0 0 0 43.53 43.53C172.55 1024 289.53 1024 512 1024s339.45 0 422.94-45.53a360 360 0 0 0 43.53-43.53C1024 851.45 1024 734.47 1024 512s0-339.45-45.53-422.94a360 360 0 0 0-43.53-43.53C851.45 0 734.47 0 512 0z"></path>
@@ -91,8 +99,8 @@
   </svg>
 
   <nav style="position: sticky; top: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; padding: 18px 48px; background: rgba(14,14,14,0.85); backdrop-filter: blur(8px) saturate(140%); border-bottom: 1px solid rgba(244,244,242,0.10);">
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <svg width="28" height="28"><use href="#lic"></use></svg>
+    <div style="display: flex; align-items: center; gap: 11px;">
+      <span class="yaplogo anim"><i></i><i></i><i></i><i></i><i></i><i></i></span>
       <span style="font-size: 17px; font-weight: 700; letter-spacing: -0.01em;">yapping</span>
     </div>
     <div class="navlinks" style="display: flex; align-items: center; gap: 24px; font-size: 14px;">
@@ -106,48 +114,24 @@
       <a class="btn keep" href="#download" style="padding: 9px 20px; font-size: 12px;">Download</a>
     </div>
   </nav>
-  <a href="https://github.com/angad-kandhari/yapping/releases/tag/v2.0.0" style="display: block; text-align: center; padding: 10px 16px; background: color-mix(in srgb, var(--yap-accent) 13%, transparent); border-bottom: 1px solid rgba(244,244,242,0.08); font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--yap-accent); letter-spacing: 0.04em;">NEW &middot; yapping 2.0: one window, seven sections, a transcripts library, notarized downloads &rarr;</a>
+  
 
-  <header class="hero" style="position: relative; min-height: 820px; overflow: hidden;">
-    <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 24px; padding: 88px 48px 0;">
-      <span class="mono" style="font-size: 12px; color: #9B9B98; letter-spacing: 0.06em;">WHAT TALKING TO YOUR OWN MAC CAN COST OUT THERE. ILLUSTRATIVE, OBVIOUSLY.</span>
-      <h1 style="margin: 0; font-weight: 900; font-size: clamp(64px, 9.5vw, 144px); line-height: 0.9; letter-spacing: -0.02em; text-transform: uppercase;">Don't get billed<br>for <span style="color: var(--yap-accent);">talking.</span></h1>
-      <p style="margin: 0; max-width: 520px; font-size: 16px; line-height: 1.45; color: #9B9B98;">Private, on-device dictation for macOS, and now Windows and Linux in beta. Hold one key, yap, release. Your words at your cursor, in any app, and your voice never leaves the machine.</p>
-      <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center;">
-        <a class="btn" href="https://github.com/angad-kandhari/yapping/releases/latest/download/Yapping.dmg" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="16" height="16" style="margin-top: -2px;"><use href="#apl"></use></svg>Download for macOS</a>
-        <a class="btn" href="https://github.com/angad-kandhari/yapping-windows/releases/latest/download/Yapping-Setup.exe" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="15" height="15" style="margin-top: -1px;"><use href="#win"></use></svg>Download for Windows</a>
-        <a class="btn" href="https://github.com/angad-kandhari/yapping-linux/releases/latest/download/Yapping-x86_64.AppImage" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="16" height="16" style="margin-top: -2px;"><use href="#tux"></use></svg>Download for Linux</a>
-        <a class="ghost" data-win="https://github.com/angad-kandhari/yapping-windows" data-linux="https://github.com/angad-kandhari/yapping-linux" href="https://github.com/angad-kandhari/yapping" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="17" height="17" style="color: #F4F4F2;"><use href="#octo"></use></svg>Read the source</a>
+  <header class="hero" style="position: relative; overflow: hidden; background: radial-gradient(60% 50% at 50% 0%, rgba(255,90,31,0.09), transparent 70%);">
+    <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px; padding: 84px 48px 8px;">
+      <span class="mono" style="display: inline-flex; gap: 9px; align-items: center; font-size: 12px; color: var(--yap-accent); background: rgba(255,90,31,0.10); border: 1px solid rgba(255,90,31,0.25); padding: 6px 15px; border-radius: 999px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: var(--yap-accent);"></span>yapping 2.0 &middot; one window</span>
+      <h1 style="margin: 0; font-weight: 900; font-size: clamp(52px, 7.5vw, 104px); line-height: 0.98; letter-spacing: -0.03em;">Don't get billed<br><span style="color: var(--yap-accent);">for talking.</span></h1>
+      <p style="margin: 0; max-width: 560px; font-size: 16px; line-height: 1.5; color: #9B9B98;">Talking to your own Mac shouldn't cost a subscription. Hold one key, yap, release: clean text at your cursor, in any app, and your voice never leaves the machine.</p>
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;">
+        <a class="btn" href="https://github.com/angad-kandhari/yapping/releases/latest/download/Yapping.dmg" style="padding: 14px 28px; font-size: 14px; display: inline-flex; align-items: center; gap: 9px;"><svg width="16" height="16" style="margin-top: -2px;"><use href="#apl"></use></svg>Download for macOS</a>
+        <a class="ghost" data-win="https://github.com/angad-kandhari/yapping-windows" data-linux="https://github.com/angad-kandhari/yapping-linux" href="https://github.com/angad-kandhari/yapping" style="padding: 14px 28px; font-size: 14px; display: inline-flex; align-items: center; gap: 9px;"><svg width="17" height="17" style="color: #F4F4F2;"><use href="#octo"></use></svg>Read the source</a>
       </div>
-      <span class="mono" style="font-size: 11px; color: #5C5C5A; letter-spacing: 0.04em;">the invoices are draggable. the prices are not.</span>
-    </div>
-    <div class="invoice" data-card="w" style="position: absolute; bottom: 8px; left: 7%; width: 264px; background: #F4F4F2; border-radius: 10px; box-shadow: 0 24px 48px rgba(0,0,0,0.55); padding: 22px 24px; display: flex; flex-direction: column; gap: 8px; font-family: 'Geist Mono', monospace; cursor: grab; touch-action: none; user-select: none; transform: rotate(-8deg); z-index: 2;">
-      <span style="font-size: 10px; color: #5C5C5A; letter-spacing: 0.08em;">INVOICE &middot; CLOUD DICTATION, PRO PLAN</span>
-      <div style="display: flex; justify-content: space-between; font-size: 12.5px; color: #0E0E0E;"><span>dictation, 1 yr</span><span style="font-weight: 700;">$144.00</span></div>
-      <div style="display: flex; justify-content: space-between; font-size: 12.5px; color: #0E0E0E;"><span>&times; 5 years</span><span style="font-weight: 700;">$720.00</span></div>
-      <div style="display: flex; justify-content: space-between; font-size: 11px; color: #5C5C5A;"><span>cloud processing</span><span>mandatory</span></div>
-      <div style="display: flex; justify-content: space-between; font-size: 11px; color: #5C5C5A;"><span>free tier</span><span>2,000 words/wk</span></div>
-      <span style="align-self: flex-start; background: #0E0E0E; color: #F4F4F2; font-size: 9.5px; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 999px;">AUTO-RENEWS</span>
-    </div>
-    <div class="invoice" data-card="s" style="position: absolute; bottom: 22px; left: 38%; width: 264px; background: #F4F4F2; border-radius: 10px; box-shadow: 0 24px 48px rgba(0,0,0,0.55); padding: 22px 24px; display: flex; flex-direction: column; gap: 8px; font-family: 'Geist Mono', monospace; cursor: grab; touch-action: none; user-select: none; transform: rotate(4deg); z-index: 2;">
-      <span style="font-size: 10px; color: #5C5C5A; letter-spacing: 0.08em;">INVOICE &middot; LIFETIME LICENCE APP</span>
-      <div style="display: flex; justify-content: space-between; font-size: 12.5px; color: #0E0E0E;"><span>lifetime licence</span><span style="font-weight: 700;">$249.99</span></div>
-      <div style="display: flex; justify-content: space-between; font-size: 11px; color: #5C5C5A;"><span>source code</span><span>closed</span></div>
-      <div style="display: flex; justify-content: space-between; font-size: 11px; color: #5C5C5A;"><span>audio on disk</span><span>by default</span></div>
-      <span style="align-self: flex-start; background: #0E0E0E; color: #F4F4F2; font-size: 9.5px; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 999px;">ONE-TIME</span>
-    </div>
-    <div class="invoice" data-card="y" style="position: absolute; bottom: 44px; right: 6%; width: 280px; background: var(--yap-accent); border-radius: 10px; box-shadow: 0 28px 56px rgba(0,0,0,0.6); padding: 24px 26px; display: flex; flex-direction: column; gap: 8px; font-family: 'Geist Mono', monospace; cursor: grab; touch-action: none; user-select: none; transform: rotate(-4deg); z-index: 3;">
-      <span style="font-size: 10px; color: rgba(14,14,14,0.6); letter-spacing: 0.08em;">RECEIPT &middot; YAPPING</span>
-      <div style="display: flex; justify-content: space-between; font-size: 12.5px; color: #0E0E0E;"><span>dictation, forever</span><span style="font-weight: 700;">$0.00</span></div>
-      <div style="display: flex; justify-content: space-between; font-size: 11px; color: rgba(14,14,14,0.6);"><span>words uploaded</span><span>0</span></div>
-      <span style="align-self: flex-start; background: #0E0E0E; color: #F4F4F2; font-size: 9.5px; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 999px;">PAID IN FULL</span>
+      <span class="mono" style="font-size: 11.5px; color: #5C5C5A; letter-spacing: 0.04em;">$0 &middot; no account &middot; no cloud &middot; <a href="#download" style="color: #9B9B98;">also for windows &amp; linux &darr;</a></span>
     </div>
   </header>
 
 
-  <section id="demo" style="padding: 112px 64px 40px; max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px;">
-    <span class="mono" style="font-size: 12px; color: #9B9B98; letter-spacing: 0.06em;">THE 2.0 APP, IN YOUR BROWSER</span>
-    <h2 style="margin: 0; font-weight: 900; font-size: clamp(40px, 5vw, 64px); line-height: 1.02; letter-spacing: -0.02em; text-transform: uppercase;">Play with it<br>before you <span style="color: var(--yap-accent);">download it.</span></h2>
+  <section id="demo" style="padding: 44px 64px 40px; max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px;">
+    <span class="mono" style="font-size: 12px; color: #9B9B98; letter-spacing: 0.06em;">THE 2.0 APP, IN YOUR BROWSER &middot; HOVER THE RAIL, CLICK AROUND</span>
     <div style="border-radius: 16px; overflow: hidden; border: 1px solid rgba(244,244,242,0.10); background: #0B0B0A;">
       <iframe src="demo.html" loading="lazy" title="yapping 2.0 interactive demo" style="display: block; width: 100%; aspect-ratio: 1120 / 690; border: 0;"></iframe>
     </div>
@@ -191,7 +175,7 @@
 
   <section id="app" style="padding: 112px 64px 40px; max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px;">
     <span class="mono" style="font-size: 12px; color: #9B9B98; letter-spacing: 0.06em;">THE APP, AS SHIPPED</span>
-    <h2 style="margin: 0; font-weight: 900; font-size: clamp(40px, 5vw, 64px); line-height: 1.02; letter-spacing: -0.02em; text-transform: uppercase;">Small enough to disappear.<br>Alive when you talk.</h2>
+    <h2 style="margin: 0; font-weight: 900; font-size: clamp(40px, 5vw, 64px); line-height: 1.02; letter-spacing: -0.02em; ">Small enough to disappear.<br>Alive when you talk.</h2>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 12px;">
       <div class="card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
         <div style="flex: 1; min-height: 230px; display: flex; align-items: flex-end; justify-content: center; background: linear-gradient(180deg, #232330 0%, #14141b 70%); position: relative; padding-bottom: 26px;">
@@ -353,13 +337,13 @@
   <section style="border-top: 1px solid rgba(244,244,242,0.10); border-bottom: 1px solid rgba(244,244,242,0.10); padding: 96px 48px; text-align: center;">
     <div style="max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px;">
       <span class="mono" style="font-size: 12px; color: #9B9B98; letter-spacing: 0.06em;">PRIVACY, THE SHORT VERSION</span>
-      <p style="margin: 0; font-weight: 900; font-size: clamp(26px, 4vw, 44px); line-height: 1.15; letter-spacing: -0.01em; text-transform: uppercase;">A dictation app hears everything. <span style="color: var(--yap-accent);">That's why this one can't phone home.</span></p>
+      <p style="margin: 0; font-weight: 900; font-size: clamp(26px, 4vw, 44px); line-height: 1.15; letter-spacing: -0.01em; ">A dictation app hears everything. <span style="color: var(--yap-accent);">That's why this one can't phone home.</span></p>
       <p class="mono" style="margin: 0; font-size: 12.5px; color: #9B9B98;">complete list of network connections: <span style="color: #F4F4F2;">localhost</span> (your Ollama, if you use it) + GitHub, to check for updates (once a day and on demand) and to download the update when you click Update Now. the windows and linux betas also download their speech models from Hugging Face, once. read the source and verify.</p>
     </div>
   </section>
 
   <section id="faq" style="padding: 96px 64px; max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 36px;">
-    <h2 style="margin: 0; font-weight: 900; font-size: clamp(36px, 5vw, 64px); line-height: 1.02; letter-spacing: -0.02em; text-transform: uppercase;">Questions certified yappers ask.</h2>
+    <h2 style="margin: 0; font-weight: 900; font-size: clamp(36px, 5vw, 64px); line-height: 1.02; letter-spacing: -0.02em; ">Questions certified yappers ask.</h2>
     <div style="display: flex; flex-direction: column;">
       <details style="border-top: 1px solid rgba(244,244,242,0.10); padding: 4px 0;">
         <summary style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 700;"><span>What does it need to run?</span><span class="yap-x" style="font-size: 22px; color: var(--yap-accent);">+</span></summary>
@@ -393,8 +377,8 @@
   </section>
 
   <section id="download" style="border-top: 1px solid rgba(244,244,242,0.10); padding: 120px 48px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 28px;">
-    <h2 style="margin: 0; font-weight: 900; font-size: clamp(48px, 8vw, 120px); line-height: 0.92; letter-spacing: -0.02em; text-transform: uppercase;">Keep the<br><span style="color: var(--yap-accent);">$720.</span></h2>
-    <p style="margin: 0; font-size: 15px; color: #9B9B98;">One download, one permission screen. Then just hold the key.</p>
+    <h2 style="margin: 0; font-weight: 900; font-size: clamp(48px, 8vw, 120px); line-height: 0.92; letter-spacing: -0.02em; >Start<br><span style="color: var(--yap-accent);">yapping.</span></h2>
+    <p style="margin: 0; font-size: 15px; color: #9B9B98;">One download, one permission screen, zero dollars. The $720 stays yours.</p>
     <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center;">
       <a class="btn" href="https://github.com/angad-kandhari/yapping/releases/latest/download/Yapping.dmg" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="16" height="16" style="margin-top: -2px;"><use href="#apl"></use></svg>Download for macOS</a>
       <a class="btn" href="https://github.com/angad-kandhari/yapping-windows/releases/latest/download/Yapping-Setup.exe" style="padding: 14px 28px; font-size: 13px; display: inline-flex; align-items: center; gap: 9px;"><svg width="15" height="15" style="margin-top: -1px;"><use href="#win"></use></svg>Download for Windows</a>
@@ -453,36 +437,6 @@
     }, 120);
     render(0, true);
   }
-
-  // Draggable invoices
-  var drag = null;
-  var offsets = {};
-  document.querySelectorAll(".invoice").forEach(function (el) {
-    var id = el.getAttribute("data-card");
-    offsets[id] = { x: 0, y: 0 };
-    var baseRotate = { w: -8, s: 4, y: -4 }[id];
-    el.addEventListener("pointerdown", function (e) {
-      e.preventDefault();
-      drag = { id: id, el: el, sx: e.clientX, sy: e.clientY, ox: offsets[id].x, oy: offsets[id].y, rot: baseRotate };
-      el.style.zIndex = 30;
-      el.style.cursor = "grabbing";
-    });
-  });
-  window.addEventListener("pointermove", function (e) {
-    if (!drag) return;
-    var x = drag.ox + e.clientX - drag.sx;
-    var y = drag.oy + e.clientY - drag.sy;
-    offsets[drag.id] = { x: x, y: y };
-    drag.el.style.transform = "translate(" + x + "px," + y + "px) rotate(" + (drag.rot + (drag.rot > 0 ? 2 : -2)) + "deg) scale(1.04)";
-  });
-  window.addEventListener("pointerup", function () {
-    if (!drag) return;
-    var o = offsets[drag.id];
-    drag.el.style.transform = "translate(" + o.x + "px," + o.y + "px) rotate(" + drag.rot + "deg)";
-    drag.el.style.zIndex = drag.id === "y" ? 3 : 2;
-    drag.el.style.cursor = "grab";
-    drag = null;
-  });
 
   // The pressable keycap
   var key = document.getElementById("keycap");
