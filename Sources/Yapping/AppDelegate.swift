@@ -241,9 +241,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         guard !busy else { return }
+
+        // Password fields: refuse before the mic ever opens, so nothing is
+        // recorded, nothing reaches the cleanup model, and nothing lands in
+        // History. Two AX reads with a 0.1s timeout, which is well inside the
+        // 0.35s minimum hold, so the gesture cannot feel it.
+        // (If this ever does cost too much: start the mic and this check
+        // concurrently in axSnapshot below, and abort the transcriber on a
+        // secure result instead.)
+        if SecureGuard.shouldBlock(AXContext.focusSecurity(),
+                                   enabled: ConfigStore.shared.blockSecureFields) {
+            Log.info("dictation refused: focused field reports itself secure")
+            Sound.refused()
+            Self.notify("Dictation blocked", body: SecureGuard.blockedNotice)
+            return
+        }
+
         busy = true
         cancelled = false
         pressedAt = Date()
+        ActivationPolicy.sessionBegan()
 
         // Mic first, everything else after: every millisecond before the
         // engine starts is a millisecond of the user's first word at risk
@@ -333,10 +350,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             defer {
                 busy = false
                 statusItem.setState(.idle)
+                // After the paste and after any "send it" Return, so a policy
+                // change can never precede text landing in the target app
+                ActivationPolicy.sessionEnded()
             }
             let started = await startTask?.value ?? false
             guard started else {
-                Sound.play("Basso")
+                Sound.failed()
                 await transcriber.abort()
                 hud.hide()
                 return
@@ -347,7 +367,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // quietly into History, never paste
                 if heldFor > 30 {
                     let recovered = (try? await transcriber.stop()) ?? ""
-                    if !recovered.isEmpty {
+                    // Never archive what a secure field would have received
+                    let secure = SecureGuard.shouldBlock(
+                        AXContext.focusSecurity(),
+                        enabled: ConfigStore.shared.blockSecureFields)
+                    if !recovered.isEmpty, !secure {
                         HistoryStore.shared.add(
                             raw: recovered, cleaned: recovered,
                             appName: self.targetApp?.localizedName ?? "Unknown")
@@ -366,7 +390,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             do {
                 let text = try await transcriber.stop()
                 guard !text.isEmpty else {
-                    Sound.play("Basso")
+                    Sound.failed()
                     hud.hide()
                     return
                 }
@@ -380,7 +404,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.hud.setProcessing("editing selection...")
                     guard let edited = await Cleanup.rewrite(
                         selection: selection, instruction: text) else {
-                        Sound.play("Basso")
+                        Sound.failed()
                         Self.notify("Edit failed",
                                     body: "Selection left unchanged. \(Cleanup.providerHint)")
                         self.hud.hide()
@@ -395,6 +419,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     output = ConfigStore.shared.applyTextRules(to: cleaned)
                 }
                 guard !self.cancelled else {
+                    self.hud.hide()
+                    return
+                }
+
+                // Focus can move mid-session, so check again before the text
+                // goes anywhere: not to the target app, not to the clipboard,
+                // not to History or Stats.
+                if SecureGuard.shouldBlock(AXContext.focusSecurity(),
+                                           enabled: ConfigStore.shared.blockSecureFields) {
+                    Log.info("paste refused: focus moved into a secure field")
+                    Sound.refused()
+                    Self.notify("Dictation discarded", body: SecureGuard.blockedNotice)
                     self.hud.hide()
                     return
                 }
@@ -441,7 +477,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.offerTips()
             } catch {
                 Log.error("dictation error: \(error)")
-                Sound.play("Basso")
+                Sound.failed()
                 Self.notify("Dictation failed", body: "\(error.localizedDescription)")
                 self.hud.hide()
             }
@@ -475,6 +511,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// A Dock icon exists while a window is open, so clicking it should
+    /// bring the app back rather than doing nothing.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        if !hasVisibleWindows { openMain(.dictations) }
+        return true
+    }
+
+    /// Closing the last window returns yapping to the menu bar; it must not
+    /// quit. The default is already false, but a policy-switching app should
+    /// not leave that to inference.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
     static func notify(_ title: String, body: String) {
         let content = UNMutableNotificationContent()
         content.title = title
@@ -490,4 +540,11 @@ enum Sound {
         guard ConfigStore.shared.soundsEnabled else { return }
         NSSound(contentsOfFile: "/System/Library/Sounds/\(name).aiff", byReference: true)?.play()
     }
+
+    /// Something went wrong.
+    static func failed() { play("Basso") }
+
+    /// Nothing went wrong; yapping declined on purpose. Distinct from a
+    /// failure so a blocked password field never sounds like a bug.
+    static func refused() { play("Submarine") }
 }

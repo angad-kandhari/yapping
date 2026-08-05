@@ -126,6 +126,9 @@ private struct GeneralSettings: View {
                 Toggle("Show words as you speak", isOn: $config.livePreview)
                 Text("Your words appear live above the Dock while you dictate, so you can see the recognizer keeping up.")
                     .font(.caption).foregroundStyle(.secondary)
+                Toggle("Never dictate into password fields", isOn: $config.blockSecureFields)
+                Text("When a field reports itself as a password field, the mic does not start and nothing is saved. Apps that do not report it, including browsers, Electron apps, and terminal password prompts, cannot be detected, so treat this as a safety net rather than a guarantee.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

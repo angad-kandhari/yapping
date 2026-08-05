@@ -42,6 +42,8 @@ final class ConfigStore: ObservableObject {
     @Published var micDeviceUID: String { didSet { d.set(micDeviceUID, forKey: "micDeviceUID") } }
     /// Live words above the Dock while dictating.
     @Published var livePreview: Bool { didSet { d.set(livePreview, forKey: "livePreview") } }
+    /// Refuse to dictate into fields that report themselves as passwords.
+    @Published var blockSecureFields: Bool { didSet { d.set(blockSecureFields, forKey: "blockSecureFields") } }
 
     private let d = UserDefaults.standard
 
@@ -80,6 +82,7 @@ final class ConfigStore: ObservableObject {
         hudEnabled = d.object(forKey: "hudEnabled") as? Bool ?? false
         micDeviceUID = d.string(forKey: "micDeviceUID") ?? ""
         livePreview = d.object(forKey: "livePreview") as? Bool ?? true
+        blockSecureFields = d.object(forKey: "blockSecureFields") as? Bool ?? true
     }
 
     private func saveJSON<T: Encodable>(_ value: T, key: String) {

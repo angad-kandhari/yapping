@@ -10,15 +10,52 @@ enum AXContext {
     private static let windowRadius = 1000
     private static let maxFieldRead = 50_000
 
-    private static func focusedElement() -> AXUIElement? {
+    /// What we could learn about the focused field's secrecy.
+    enum SecureCheck {
+        case secure      // it says AXSecureTextField; believe it
+        case notSecure   // it named a role, and that role is not secure
+        case unknown     // no accessibility, or the app told us nothing
+    }
+
+    /// Is the focused field a password field?
+    ///
+    /// This is a mitigation, not a security boundary, and the difference
+    /// matters. A positive answer is trustworthy: only an app that explicitly
+    /// reports AXSecureTextField produces one. A negative answer is not, and
+    /// cannot be: Electron apps, web views, and terminal password prompts
+    /// (sudo) report nothing special. Blocking on silence would refuse to
+    /// dictate into half the apps people use, so `unknown` means allow.
+    static func focusSecurity(timeout: Float = 0.1) -> SecureCheck {
+        guard let element = focusedElement(timeout: timeout) else { return .unknown }
+        let subrole = string(element, kAXSubroleAttribute)
+        let role = string(element, kAXRoleAttribute)
+        if isSecure(role: role, subrole: subrole) { return .secure }
+        return role == nil && subrole == nil ? .unknown : .notSecure
+    }
+
+    /// Pure so the truth table is testable. A few apps report the secure
+    /// identity as the role rather than the subrole, so check both.
+    static func isSecure(role: String?, subrole: String?) -> Bool {
+        let secure = kAXSecureTextFieldSubrole as String
+        return subrole == secure || role == secure
+    }
+
+    private static func string(_ element: AXUIElement, _ attribute: String) -> String? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            element, attribute as CFString, &value) == .success else { return nil }
+        return value as? String
+    }
+
+    private static func focusedElement(timeout: Float = 0.3) -> AXUIElement? {
         let systemWide = AXUIElementCreateSystemWide()
-        AXUIElementSetMessagingTimeout(systemWide, 0.3)
+        AXUIElementSetMessagingTimeout(systemWide, timeout)
         var focused: CFTypeRef?
         let err = AXUIElementCopyAttributeValue(
             systemWide, kAXFocusedUIElementAttribute as CFString, &focused)
         guard err == .success, let focused else { return nil }
         let element = focused as! AXUIElement
-        AXUIElementSetMessagingTimeout(element, 0.3)
+        AXUIElementSetMessagingTimeout(element, timeout)
         return element
     }
 

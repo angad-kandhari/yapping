@@ -28,6 +28,9 @@ final class UtilityWindow<Content: View> {
     }
 
     func show() {
+        // Re-showing an already-open window must not count twice, or the
+        // policy never falls back to accessory.
+        let wasVisible = window?.isVisible == true
         if window == nil {
             let hosting = NSHostingController(rootView: AnyView(makeContent()))
             let w = NSWindow(contentViewController: hosting)
@@ -49,12 +52,18 @@ final class UtilityWindow<Content: View> {
             ) { [weak self] _ in
                 self?.hosting?.rootView = AnyView(EmptyView())
                 self?.contentCleared = true
+                ActivationPolicy.windowClosed()
             }
             self.hosting = hosting
             window = w
         } else if let hosting, contentCleared {
             hosting.rootView = AnyView(makeContent())
             contentCleared = false
+        }
+        // Becoming a regular app must precede activation: setting the policy
+        // alone does not raise the menu bar, activating does.
+        if !wasVisible {
+            ActivationPolicy.windowOpened()
         }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
