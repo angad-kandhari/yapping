@@ -126,10 +126,10 @@
         <h1 style="margin: 0; font-weight: 900; font-size: clamp(42px, 4.6vw, 76px); line-height: 0.98; letter-spacing: -0.03em;">Don't get billed<br><span style="color: var(--yap-accent);">for talking.</span></h1>
         <p style="margin: 0; max-width: 460px; font-size: 15.5px; line-height: 1.55; color: #9B9B98;">Talking to your own Mac shouldn't cost a subscription. Hold one key, yap, release: clean text at your cursor, in any app, and your voice never leaves the machine.</p>
         <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-          <a class="btn" href="https://github.com/angad-kandhari/yapping/releases/latest/download/Yapping.dmg" style="padding: 14px 26px; font-size: 14px; display: inline-flex; align-items: center; gap: 9px;"><svg width="16" height="16" style="margin-top: -2px;"><use href="#apl"></use></svg>Download for macOS</a>
+          <a class="btn" id="heroDl" href="https://github.com/angad-kandhari/yapping/releases/latest/download/Yapping.dmg" style="padding: 14px 26px; font-size: 14px; display: inline-flex; align-items: center; gap: 9px;"><svg width="16" height="16" style="margin-top: -2px;"><use id="heroDlIcon" href="#apl"></use></svg><span id="heroDlLabel">Download for macOS</span></a>
           <a class="ghost" data-win="https://github.com/angad-kandhari/yapping-windows" data-linux="https://github.com/angad-kandhari/yapping-linux" href="https://github.com/angad-kandhari/yapping" style="padding: 14px 26px; font-size: 14px; display: inline-flex; align-items: center; gap: 9px;"><svg width="17" height="17" style="color: #F4F4F2;"><use href="#octo"></use></svg>Read the source</a>
         </div>
-        <span class="mono" style="font-size: 11.5px; color: #5C5C5A; letter-spacing: 0.04em;">$0 &middot; no account &middot; no cloud &middot; <a href="#download" style="color: #9B9B98;">also for windows &amp; linux &darr;</a></span>
+        <span class="mono" style="font-size: 11.5px; color: #5C5C5A; letter-spacing: 0.04em;">$0 &middot; no account &middot; no cloud &middot; <a id="heroAlso" href="#download" style="color: #9B9B98;">also for windows &amp; linux &darr;</a></span>
       </div>
       <div id="demo" style="min-width: 0;">
         <div style="border-radius: 14px; overflow: hidden; border: 1px solid rgba(244,244,242,0.12); box-shadow: 0 30px 80px rgba(0,0,0,0.55);">
@@ -464,6 +464,22 @@
   var srcAttr = /Windows/i.test(navigator.userAgent) ? "data-win"
     : (/Linux/i.test(navigator.userAgent) && !/Android/i.test(navigator.userAgent)) ? "data-linux"
     : null;
+
+  // The hero download button matches the visitor's OS: a Windows visitor
+  // sees "Download for Windows" pointing at the .exe, Linux the AppImage.
+  var heroBtn = document.getElementById("heroDl");
+  if (heroBtn && srcAttr) {
+    var heroCfg = srcAttr === "data-win"
+      ? { href: "https://github.com/angad-kandhari/yapping-windows/releases/latest/download/Yapping-Setup.exe",
+          icon: "#win", label: "Download for Windows", also: "also for macos & linux \u2193" }
+      : { href: "https://github.com/angad-kandhari/yapping-linux/releases/latest/download/Yapping-x86_64.AppImage",
+          icon: "#tux", label: "Download for Linux", also: "also for macos & windows \u2193" };
+    heroBtn.href = heroCfg.href;
+    document.getElementById("heroDlIcon").setAttribute("href", heroCfg.icon);
+    document.getElementById("heroDlLabel").textContent = heroCfg.label;
+    var also = document.getElementById("heroAlso");
+    if (also) also.textContent = heroCfg.also;
+  }
   if (srcAttr) {
     var srcLinks = document.querySelectorAll("a[" + srcAttr + "]");
     for (var s = 0; s < srcLinks.length; s++) {
