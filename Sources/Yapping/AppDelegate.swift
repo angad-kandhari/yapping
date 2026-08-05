@@ -117,6 +117,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.statusItem.pushLevel(level)
             self?.hud.pushLevel(level)
             self?.voiceActivity(level)
+            // Diagnostics draws a live meter from this for free
+            Task { @MainActor in LevelBus.shared.push(level) }
         }
         transcriber.onPartial = { [weak self] text in
             guard ConfigStore.shared.livePreview else { return }

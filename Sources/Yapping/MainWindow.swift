@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The seven sections behind the rail.
 enum MainSection: String, CaseIterable, Identifiable {
-    case dictations, stats, transcripts, styles, dictionary, settings, privacy
+    case dictations, stats, transcripts, styles, dictionary, settings, diagnostics, privacy
     var id: String { rawValue }
 
     var label: String {
@@ -14,6 +14,7 @@ enum MainSection: String, CaseIterable, Identifiable {
         case .styles: return "Styles"
         case .dictionary: return "Dictionary"
         case .settings: return "Settings"
+        case .diagnostics: return "Diagnostics"
         case .privacy: return "Privacy"
         }
     }
@@ -26,6 +27,7 @@ enum MainSection: String, CaseIterable, Identifiable {
         case .styles: return "paintbrush"
         case .dictionary: return "character.book.closed"
         case .settings: return "gearshape"
+        case .diagnostics: return "stethoscope"
         case .privacy: return "checkmark.shield"
         }
     }
@@ -63,6 +65,7 @@ struct MainWindowView: View {
         case .styles: StylesPane()
         case .dictionary: DictionaryPane()
         case .settings: SettingsPane()
+        case .diagnostics: DiagnosticsPane()
         case .privacy: PrivacyPane()
         }
     }

@@ -180,7 +180,7 @@ final class Transcriber {
 
         input.installTap(onBus: 0, bufferSize: 2048, format: inputFormat) { [weak self] buffer, _ in
             guard let self else { return }
-            self.onLevel?(Self.rms(of: buffer))
+            self.onLevel?(AudioLevel.rms(of: buffer))
             if let converted = self.convert(buffer) {
                 self.continuation?.yield(AnalyzerInput(buffer: converted))
             }
@@ -305,14 +305,6 @@ final class Transcriber {
         return mono
     }
 
-    private static func rms(of buffer: AVAudioPCMBuffer) -> Float {
-        guard let data = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return 0 }
-        var sum: Float = 0
-        for i in 0..<Int(buffer.frameLength) {
-            sum += data[i] * data[i]
-        }
-        return (sum / Float(buffer.frameLength)).squareRoot()
-    }
 }
 
 enum YappingError: Error, LocalizedError {

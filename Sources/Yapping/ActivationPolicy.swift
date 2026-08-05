@@ -44,6 +44,11 @@ enum ActivationPolicy {
         }
     }
 
+    /// True while a dictation is in flight. Diagnostics refuses to open a
+    /// second audio engine during one.
+    @MainActor
+    static var isDictating: Bool { dictating }
+
     @MainActor
     private static func apply() {
         guard !dictating else { return }  // queued; sessionEnded applies it

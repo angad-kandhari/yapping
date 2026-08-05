@@ -53,6 +53,23 @@ enum Log {
         write("ERROR", message)
     }
 
+    /// Recent ERROR lines for the diagnostics panel. Opens its own read
+    /// handle so it never touches the write handle held on `queue`.
+    static func recentErrors(limit: Int = 50) -> [String] {
+        guard let handle = try? FileHandle(forReadingFrom: fileURL) else { return [] }
+        defer { try? handle.close() }
+        let size = (try? handle.seekToEnd()) ?? 0
+        let window: UInt64 = 64 * 1024
+        try? handle.seek(toOffset: size > window ? size - window : 0)
+        guard let data = try? handle.readToEnd(),
+              let text = String(data: data, encoding: .utf8) else { return [] }
+        return text
+            .split(separator: "\n")
+            .filter { $0.contains("[ERROR]") }
+            .suffix(limit)
+            .map(String.init)
+    }
+
     static func reveal() {
         NSWorkspace.shared.activateFileViewerSelecting([fileURL])
     }
