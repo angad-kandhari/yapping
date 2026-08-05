@@ -11,6 +11,32 @@ struct TranscriptEntry: Codable, Identifiable {
     var words: Int
     var text: String
     var summary: String
+
+    init(id: UUID, date: Date, kind: Kind, title: String, seconds: Double,
+         words: Int, text: String, summary: String) {
+        self.id = id
+        self.date = date
+        self.kind = kind
+        self.title = title
+        self.seconds = seconds
+        self.words = words
+        self.text = text
+        self.summary = summary
+    }
+
+    /// Tolerant decoding, adopted before this store needs new fields so the
+    /// next addition is free rather than destructive.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        date = try c.decode(Date.self, forKey: .date)
+        kind = try c.decodeIfPresent(Kind.self, forKey: .kind) ?? .file
+        title = try c.decodeIfPresent(String.self, forKey: .title) ?? "Transcript"
+        seconds = try c.decodeIfPresent(Double.self, forKey: .seconds) ?? 0
+        words = try c.decodeIfPresent(Int.self, forKey: .words) ?? 0
+        text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
+        summary = try c.decodeIfPresent(String.self, forKey: .summary) ?? ""
+    }
 }
 
 /// The transcripts library: every completed Listen session and file job,
@@ -20,14 +46,10 @@ final class TranscriptStore: ObservableObject {
     static let shared = TranscriptStore()
     @Published private(set) var entries: [TranscriptEntry] = []
 
-    private let file = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Application Support/Yapping/transcripts.json")
+    private let file = Store.directory.appendingPathComponent("transcripts.json")
 
     private init() {
-        if let data = try? Data(contentsOf: file),
-           let loaded = try? JSONDecoder().decode([TranscriptEntry].self, from: data) {
-            entries = loaded
-        }
+        entries = Store.load([TranscriptEntry].self, from: file, label: "transcripts") ?? []
     }
 
     @discardableResult
@@ -62,12 +84,6 @@ final class TranscriptStore: ObservableObject {
     }
 
     private func save() {
-        let dir = file.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        if let data = try? JSONEncoder().encode(entries) {
-            try? data.write(to: file)
-            try? FileManager.default.setAttributes(
-                [.posixPermissions: 0o600], ofItemAtPath: file.path)
-        }
+        Store.save(entries, to: file, label: "transcripts")
     }
 }

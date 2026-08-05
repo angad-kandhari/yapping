@@ -8,6 +8,31 @@ struct HistoryEntry: Codable, Identifiable {
     let appName: String
     let raw: String
     let cleaned: String
+    /// The style in force when this was dictated, for stats and for
+    /// re-running cleanup later. Absent on entries written before 2.5.
+    var styleName: String?
+
+    init(id: UUID, date: Date, appName: String, raw: String, cleaned: String,
+         styleName: String? = nil) {
+        self.id = id
+        self.date = date
+        self.appName = appName
+        self.raw = raw
+        self.cleaned = cleaned
+        self.styleName = styleName
+    }
+
+    /// Tolerant of anything an older build wrote; only id and date are
+    /// required, and both have always been present.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        date = try c.decode(Date.self, forKey: .date)
+        appName = try c.decodeIfPresent(String.self, forKey: .appName) ?? "Unknown"
+        raw = try c.decodeIfPresent(String.self, forKey: .raw) ?? ""
+        cleaned = try c.decodeIfPresent(String.self, forKey: .cleaned) ?? ""
+        styleName = try c.decodeIfPresent(String.self, forKey: .styleName)
+    }
 }
 
 /// Recent dictations, raw and cleaned side by side. This is the
@@ -16,21 +41,17 @@ final class HistoryStore: ObservableObject {
     static let shared = HistoryStore()
     @Published private(set) var entries: [HistoryEntry] = []
 
-    private let file = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Application Support/Yapping/history.json")
+    private let file = Store.directory.appendingPathComponent("history.json")
 
     private init() {
-        if let data = try? Data(contentsOf: file),
-           let loaded = try? JSONDecoder().decode([HistoryEntry].self, from: data) {
-            entries = loaded
-        }
+        entries = Store.load([HistoryEntry].self, from: file, label: "history") ?? []
     }
 
-    func add(raw: String, cleaned: String, appName: String) {
+    func add(raw: String, cleaned: String, appName: String, styleName: String? = nil) {
         DispatchQueue.main.async {
             self.entries.insert(
                 HistoryEntry(id: UUID(), date: Date(), appName: appName,
-                             raw: raw, cleaned: cleaned),
+                             raw: raw, cleaned: cleaned, styleName: styleName),
                 at: 0)
             if self.entries.count > 200 {
                 self.entries.removeLast(self.entries.count - 200)
@@ -45,14 +66,8 @@ final class HistoryStore: ObservableObject {
     }
 
     private func save() {
-        let dir = file.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        if let data = try? JSONEncoder().encode(entries) {
-            try? data.write(to: file)
-            // dictations are private
-            try? FileManager.default.setAttributes(
-                [.posixPermissions: 0o600], ofItemAtPath: file.path)
-        }
+        // dictations are private; Store handles atomicity and 0600
+        Store.save(entries, to: file, label: "history")
     }
 }
 

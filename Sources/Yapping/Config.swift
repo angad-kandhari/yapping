@@ -63,12 +63,17 @@ final class ConfigStore: ObservableObject {
         replacements = Self.loadJSON([Replacement].self, key: "replacements") ?? []
         snippets = Self.loadJSON([Snippet].self, key: "snippets") ?? []
         var loadedStyles = Self.loadJSON([Style].self, key: "styles") ?? Style.defaults
-        // One-time seed of the Prompt style for existing installs
-        if !d.bool(forKey: "promptStyleSeeded") {
-            if !loadedStyles.contains(where: { $0.name == "Prompt" }) {
+
+        // Style seeding is versioned rather than one boolean per preset,
+        // which does not scale past the first one. Version 1 seeded Prompt.
+        let seeded = d.integer(forKey: "stylesSchemaVersion")
+        if seeded < 1 {
+            // Carry over the old single-purpose flag before retiring it
+            let hadPrompt = d.bool(forKey: "promptStyleSeeded")
+            if !hadPrompt, !loadedStyles.contains(where: { $0.name == "Prompt" }) {
                 loadedStyles.append(Style.promptPreset)
             }
-            d.set(true, forKey: "promptStyleSeeded")
+            d.set(1, forKey: "stylesSchemaVersion")
         }
         styles = loadedStyles
         useFieldContext = d.object(forKey: "useFieldContext") as? Bool ?? true
@@ -83,9 +88,11 @@ final class ConfigStore: ObservableObject {
         }
     }
 
+    /// Routed through Store so an unreadable blob leaves a rescue copy and a
+    /// log line. Losing hand-written style prompts silently was the worst
+    /// version of this bug.
     private static func loadJSON<T: Decodable>(_ type: T.Type, key: String) -> T? {
-        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(type, from: data)
+        Store.loadDefaults(type, key: key, label: key)
     }
 
     /// Replacement pairs and snippets applied to final text, case-insensitive.

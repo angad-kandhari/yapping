@@ -12,6 +12,35 @@ struct Style: Codable, Identifiable, Equatable {
     var prompt: String
     /// Verbatim styles skip LLM cleanup entirely (terminals, editors).
     var verbatim: Bool = false
+    /// Spoken formatting commands ("new paragraph") honored in this style.
+    var voiceCommands: Bool = true
+    /// BCP-47 target language; empty inherits the global default.
+    var targetLanguage: String = ""
+
+    init(id: UUID = UUID(), name: String, appPatterns: [String], prompt: String,
+         verbatim: Bool = false, voiceCommands: Bool = true, targetLanguage: String = "") {
+        self.id = id
+        self.name = name
+        self.appPatterns = appPatterns
+        self.prompt = prompt
+        self.verbatim = verbatim
+        self.voiceCommands = voiceCommands
+        self.targetLanguage = targetLanguage
+    }
+
+    /// Hand-written so a style saved by an older build still decodes: the
+    /// synthesized initializer throws on a missing key even when the property
+    /// has a default, which would cost the user every prompt they wrote.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? "Style"
+        appPatterns = try c.decodeIfPresent([String].self, forKey: .appPatterns) ?? []
+        prompt = try c.decodeIfPresent(String.self, forKey: .prompt) ?? ""
+        verbatim = try c.decodeIfPresent(Bool.self, forKey: .verbatim) ?? false
+        voiceCommands = try c.decodeIfPresent(Bool.self, forKey: .voiceCommands) ?? true
+        targetLanguage = try c.decodeIfPresent(String.self, forKey: .targetLanguage) ?? ""
+    }
 
     /// Dictating prompts to AI assistants: terse, technical, no fluff.
     /// (Terminal-based agents are covered by the verbatim Code style.)
