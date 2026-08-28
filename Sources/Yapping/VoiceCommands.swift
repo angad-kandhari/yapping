@@ -8,9 +8,11 @@ import Foundation
 ///
 /// Design note, learned the hard way: an earlier version replaced commands
 /// with sentinel tokens and asked the cleanup model to copy them through.
-/// Measured against the default local model (gemma3:4b), zero of five
-/// markers survived, which would have made cleanup and voice commands
-/// mutually exclusive. So the model never sees a marker now:
+/// Measured against gemma3:4b (the default local model at the time), zero
+/// of five markers survived, which would have made cleanup and voice
+/// commands mutually exclusive. Newer defaults do copy markers through,
+/// but the design stays: users point the app at any model they like, and
+/// segments are safe by construction. The model never sees a marker:
 /// - punctuation is inserted as real characters before cleanup, which the
 ///   model is happy to preserve because preserving wording is its job
 /// - line breaks split the text into segments that are cleaned separately

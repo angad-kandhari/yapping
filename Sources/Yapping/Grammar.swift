@@ -9,7 +9,8 @@ import Foundation
 /// speaker's ideas stay protected, because the failure mode on this side of
 /// the dial is the model writing sentences nobody said.
 ///
-/// Measured against the default local model (gemma3:4b), six ungrammatical
+/// Measured against gemma3:4b (the default local model at the time), six
+/// ungrammatical
 /// dictations, the two strengths agreed on half of them. Light is already
 /// competent at subject and verb agreement, articles, and double negatives,
 /// so the dial is not the difference between broken and fixed. Where strict

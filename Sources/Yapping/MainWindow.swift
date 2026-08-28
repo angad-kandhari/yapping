@@ -268,7 +268,7 @@ final class ProviderStatus: ObservableObject {
         }
     }
 
-    /// "gemma3:4b" reads as "gemma3" in the collapsed badge.
+    /// "qwen3:4b-instruct-2507-q4_K_M" reads as "qwen3" in the collapsed badge.
     private func shortModel(_ model: String) -> String {
         String(model.split(separator: ":").first ?? Substring(model))
     }

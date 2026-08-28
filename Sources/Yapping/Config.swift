@@ -62,7 +62,7 @@ final class ConfigStore: ObservableObject {
         customBaseURL = d.string(forKey: "customBaseURL") ?? ""
         customModel = d.string(forKey: "customModel") ?? ""
         customKey = d.string(forKey: "customKey") ?? ""
-        ollamaModel = d.string(forKey: "ollamaModel") ?? "gemma3:4b"
+        ollamaModel = d.string(forKey: "ollamaModel") ?? "qwen3:4b-instruct-2507-q4_K_M"
         ollamaHost = d.string(forKey: "ollamaHost") ?? "http://localhost:11434"
         soundsEnabled = d.object(forKey: "soundsEnabled") as? Bool ?? true
         copyInsteadOfPaste = d.object(forKey: "copyInsteadOfPaste") as? Bool ?? false
