@@ -4,9 +4,11 @@ import ApplicationServices
 import SwiftUI
 
 /// The setup assistant, in two pages: the permissions checklist (live
-/// status, one button each), then "the moves", a tour of the six features
+/// status, one button each), then "the moves", a tour of the features
 /// nobody would otherwise discover. Shown automatically until everything
-/// is green; the tour shows itself exactly once to ready users.
+/// is green; the tour shows itself exactly once to ready users and marks
+/// itself seen only when its page actually appears. The Moves pane in the
+/// main window keeps the full reference afterwards.
 struct OnboardingView: View {
     var startOnTour = false
 
@@ -15,7 +17,7 @@ struct OnboardingView: View {
     @State private var inputMonitoring = false
     @State private var accessibility = false
     @State private var globeKeyFree = false
-    @State private var ollama = false
+    @State private var cleanupReady = false
     @State private var timer = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
 
     var allRequiredGreen: Bool { mic && inputMonitoring && accessibility && globeKeyFree }
@@ -58,8 +60,8 @@ struct OnboardingView: View {
             checkRow("Globe key set to Do Nothing", ok: globeKeyFree,
                      detail: "System Settings > Keyboard > \"Press globe key to\".",
                      action: { openPane(nil, keyboard: true) })
-            checkRow("Ollama with a model (optional)", ok: ollama,
-                     detail: "For filler-word cleanup. Without it, raw transcripts are pasted.",
+            checkRow("Cleanup ready (optional)", ok: cleanupReady,
+                     detail: "Apple's on-device model needs no setup; Ollama is the alternative. Without either, raw transcripts are pasted.",
                      action: { NSWorkspace.shared.open(URL(string: "https://ollama.com")!) })
             infoRow("System audio (optional)",
                     detail: "Listen mode asks for System Audio Recording Only the first time you use it.")
@@ -122,7 +124,7 @@ struct OnboardingView: View {
                     .resizable().frame(width: 56, height: 56)
                 VStack(alignment: .leading) {
                     Text("The moves").font(.title2.bold())
-                    Text("Six ways to yap. No manual needed.")
+                    Text("Every way to yap. No manual needed.")
                         .foregroundStyle(.secondary)
                 }
             }
@@ -141,11 +143,13 @@ struct OnboardingView: View {
                  "Any audio or video becomes a transcript, faster than real time.")
             move("paintbrush", "Styles follow the app",
                  "Chat stays casual, email stays sharp, code stays verbatim. Tune them in Settings > Styles.")
+            move("globe.americas", "Speak one language, paste another",
+                 "Turn on Language out in Settings and the translation runs on the same local provider.")
 
             HStack {
                 Button("Permissions") { page = 0 }
                 Spacer()
-                Text("Take this tour anytime: menu > Setup Assistant")
+                Text("Full reference anytime: menu > The Moves")
                     .font(.caption).foregroundStyle(.tertiary)
                 Spacer()
                 Button("Done") { NSApp.keyWindow?.performClose(nil) }
@@ -155,6 +159,9 @@ struct OnboardingView: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 24)
+        // Seen means seen: only the tour page appearing counts, never the
+        // checklist run (see AppDelegate)
+        .onAppear { UserDefaults.standard.set(true, forKey: "tourSeen") }
     }
 
     private func move(_ symbol: String, _ title: String, _ detail: String) -> some View {
@@ -179,8 +186,10 @@ struct OnboardingView: View {
         accessibility = Permissions.accessibility
         globeKeyFree = Permissions.globeKeyFree
         Task {
-            let up = await Cleanup.reachable()
-            await MainActor.run { ollama = up }
+            // The default provider is Apple's on-device model, so this row
+            // must not read as a red mark for software the user never needs
+            let up = Cleanup.appleAvailable ? true : await Cleanup.reachable()
+            await MainActor.run { cleanupReady = up }
         }
     }
 

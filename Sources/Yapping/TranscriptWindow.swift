@@ -167,7 +167,17 @@ struct TranscriptView: View {
             let contents = model.summary.isEmpty
                 ? model.finalized
                 : model.summary + "\n\n---\n\n" + model.finalized
-            try? contents.write(to: url, atomically: true, encoding: .utf8)
+            do {
+                try contents.write(to: url, atomically: true, encoding: .utf8)
+            } catch {
+                // A failed save with no dialog looks identical to a
+                // successful one until the file is missing later
+                Log.error("transcript save failed: \(error)")
+                let alert = NSAlert()
+                alert.messageText = "Could not save the transcript"
+                alert.informativeText = error.localizedDescription
+                alert.runModal()
+            }
         }
     }
 }

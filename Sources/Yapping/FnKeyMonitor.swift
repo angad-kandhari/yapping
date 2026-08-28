@@ -10,12 +10,15 @@ import CoreGraphics
 ///
 /// Callbacks fire on the tap thread and must not block:
 /// - onPress: fn went down (hold begins)
-/// - onCancel: another key was pressed while fn was held (fn+arrow etc.)
+/// - onDiscard: Esc was pressed while fn was held (explicit throw-away)
+/// - onCancel: any other key was pressed while fn was held (fn+arrow etc.)
 /// - onRelease: fn came back up (always fired at the end of a hold)
 final class FnKeyMonitor {
     var onPress: (() -> Void)?
     var onRelease: (() -> Void)?
     var onCancel: (() -> Void)?
+    /// Esc while fn is held: the user explicitly asked to discard.
+    var onDiscard: (() -> Void)?
     /// Esc pressed while fn is NOT held; used to end hands-free sessions.
     var onEscape: (() -> Void)?
 
@@ -97,10 +100,15 @@ final class FnKeyMonitor {
             }
         case .keyDown:
             if held && !combo {
-                // Esc explicitly discards; any other fn+<key> is a shortcut
-                // (fn+arrow = page up, ...), not a hold. Both cancel.
+                // Esc explicitly discards. Any other fn+<key> is a shortcut
+                // (fn+arrow = page up, ...), not a hold, so it cancels the
+                // paste, but the words are worth keeping: the caller decides.
                 combo = true
-                onCancel?()
+                if event.getIntegerValueField(.keyboardEventKeycode) == 53 {
+                    onDiscard?()
+                } else {
+                    onCancel?()
+                }
             } else if !held,
                       event.getIntegerValueField(.keyboardEventKeycode) == 53 {
                 onEscape?()

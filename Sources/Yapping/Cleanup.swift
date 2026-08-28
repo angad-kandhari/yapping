@@ -99,6 +99,10 @@ enum Cleanup {
     /// one combined instruction: small local models follow a single clear
     /// instruction far more reliably than a compound one.
     static func translate(_ text: String, to language: String) async -> String? {
+        // Cleanup off means no model calls at all; translation is a model
+        // call. The dictation path never asks in that state, this is the
+        // backstop for any future caller.
+        guard ConfigStore.shared.cleanupEnabled else { return nil }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !language.isEmpty else { return nil }
         let name = Translation.displayName(language)
@@ -190,6 +194,41 @@ enum Cleanup {
 
     /// Ollama reachability (used by the setup assistant and settings).
     static func reachable() async -> Bool { await ollamaUp() }
+
+    /// Custom endpoint reachability: any HTTP answer below 500 proves
+    /// something is listening. The shape of the answer is still checked at
+    /// first real use; this exists so the one provider with no health check
+    /// stops being the one users debug blind.
+    static func customReachable() async -> Bool {
+        let config = ConfigStore.shared
+        let base = config.customBaseURL.trimmingCharacters(in: .whitespaces)
+        guard !base.isEmpty,
+              let url = URL(string: base.hasSuffix("/")
+                  ? base + "models" : base + "/models") else { return false }
+        var request = URLRequest(url: url, timeoutInterval: 2)
+        if !config.customKey.isEmpty {
+            request.setValue("Bearer \(config.customKey)", forHTTPHeaderField: "Authorization")
+        }
+        let result = try? await URLSession.shared.data(for: request)
+        let code = (result?.1 as? HTTPURLResponse)?.statusCode
+        let ok = code.map { $0 < 500 } ?? false
+        NetLog.shared.record(url, purpose: "provider reachability", ok: ok)
+        return ok
+    }
+
+    /// Whether a cleanup call made right now would reach a live provider,
+    /// for whichever provider is configured (including the Apple-to-Ollama
+    /// fallback the chat path takes).
+    static func providerHealthy() async -> Bool {
+        switch ConfigStore.shared.cleanupProvider {
+        case "apple":
+            return appleAvailable ? true : await ollamaUp()
+        case "custom":
+            return await customReachable()
+        default:
+            return await ollamaUp()
+        }
+    }
 
     /// Whether the on-device Apple model can run right now.
     static var appleAvailable: Bool {

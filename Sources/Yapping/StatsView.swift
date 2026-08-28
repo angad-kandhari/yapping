@@ -16,6 +16,7 @@ struct StatsPane: View {
 
 struct StatsView: View {
     @ObservedObject var store = StatsStore.shared
+    @State private var confirmClear = false
 
     var body: some View {
         if store.data.totalSessions == 0 {
@@ -38,10 +39,38 @@ struct StatsView: View {
                     perStyle
                     Text("All numbers live only on this Mac; stats never keep your words. Time saved assumes typing at 40 words a minute. Hour and style figures start from version 2.5, so they cannot reach back over older dictations.")
                         .font(.caption).foregroundStyle(.tertiary)
+                    HStack {
+                        Spacer()
+                        Button("Export JSON") { export() }
+                        Button("Clear stats", role: .destructive) { confirmClear = true }
+                    }
+                    .controlSize(.small)
                 }
                 .padding(.horizontal, 36)
                 .padding(.bottom, 24)
             }
+            .confirmationDialog(
+                "Clear all stats? The numbers are gone for good; dictations in History stay.",
+                isPresented: $confirmClear, titleVisibility: .visible
+            ) {
+                Button("Clear Stats", role: .destructive) { store.clear() }
+            }
+        }
+    }
+
+    private func export() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "yapping-stats.json"
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try store.exportJSON().write(to: url, options: .atomic)
+        } catch {
+            Log.error("stats export failed: \(error)")
+            let alert = NSAlert()
+            alert.messageText = "Could not export stats"
+            alert.informativeText = error.localizedDescription
+            alert.runModal()
         }
     }
 

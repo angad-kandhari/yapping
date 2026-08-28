@@ -87,7 +87,8 @@ enum UpdateCheck {
                         defaults.set(latest.version, forKey: notifiedKey)
                         AppDelegate.notify(
                             "Yapping \(latest.version) is available",
-                            body: "Open Check for Updates in the menu to see what's new.")
+                            body: "Open Check for Updates in the menu to see what's new.",
+                            opens: .updates)
                     }
                 }
             }

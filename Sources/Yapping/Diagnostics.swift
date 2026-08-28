@@ -243,6 +243,7 @@ struct DiagnosticsPane: View {
     @ObservedObject private var config = ConfigStore.shared
     @State private var monitor = MicMonitor()
     @State private var monitoring = false
+    @State private var micTestError: String?
     @State private var providerOK: Bool?
     @State private var copied = false
 
@@ -262,7 +263,14 @@ struct DiagnosticsPane: View {
             .padding(.top, 48)
             .padding(.bottom, 24)
         }
-        .task { providerOK = await Cleanup.reachable() || Cleanup.appleAvailable }
+        .task {
+            // Keep the dot honest: this is the pane people stare at while
+            // starting or stopping their provider, so a one-shot check lies
+            while !Task.isCancelled {
+                providerOK = await Cleanup.reachable() || Cleanup.appleAvailable
+                try? await Task.sleep(for: .seconds(5))
+            }
+        }
         .onDisappear { monitor.stop(); monitoring = false }
     }
 
@@ -317,6 +325,9 @@ struct DiagnosticsPane: View {
             if monitoring, let last = levels.lastAudioAt, Date().timeIntervalSince(last) > 3 {
                 Text("No audio for three seconds. That is the same symptom as a muted or wrong input device.")
                     .font(.caption).foregroundStyle(.orange)
+            }
+            if let micTestError {
+                Text(micTestError).font(.caption).foregroundStyle(.orange)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -389,6 +400,11 @@ struct DiagnosticsPane: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(diagnostics.report(), forType: .string)
                     copied = true
+                    // Reset so a second copy confirms again
+                    Task {
+                        try? await Task.sleep(for: .seconds(1.5))
+                        copied = false
+                    }
                 }
                 .controlSize(.small)
                 Text("The report holds versions, permissions, device details, and error lines. It never includes anything you dictated.")
@@ -436,6 +452,7 @@ struct DiagnosticsPane: View {
     }
 
     private func toggleMonitor() {
+        micTestError = nil
         if monitoring {
             monitor.stop()
             monitoring = false
@@ -445,6 +462,7 @@ struct DiagnosticsPane: View {
                 monitoring = true
             } catch {
                 Log.error("mic test could not start: \(error)")
+                micTestError = "The test could not open the microphone: \(error.localizedDescription)"
             }
         }
     }

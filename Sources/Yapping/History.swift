@@ -98,6 +98,7 @@ struct DictationsPane: View {
     @State private var confirmClear = false
     @State private var rerunning: UUID?
     @State private var showingDiff: Set<UUID> = []
+    @State private var selected: Set<UUID> = []
 
     private var filtered: [HistoryEntry] {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -138,7 +139,7 @@ struct DictationsPane: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    List(filtered) { entry in
+                    List(filtered, selection: $selected) { entry in
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
                                 Text(entry.date, style: .time)
@@ -182,6 +183,12 @@ struct DictationsPane: View {
                         }
                     }
                     .scrollContentBackground(.hidden)
+                    // The context menu should not be the only per-row
+                    // delete; the Delete key is the expected gesture
+                    .onDeleteCommand {
+                        selected.forEach { store.remove(id: $0) }
+                        selected.removeAll()
+                    }
                 }
             }
         }
@@ -297,6 +304,10 @@ struct DictationsPane: View {
             }
         } catch {
             Log.error("history export failed: \(error)")
+            let alert = NSAlert()
+            alert.messageText = "Could not export dictations"
+            alert.informativeText = error.localizedDescription
+            alert.runModal()
         }
     }
 }

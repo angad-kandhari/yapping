@@ -28,6 +28,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var busy = false
     private var cancelled = false
+    /// Esc (or an accidental sub-hold tap) means throw the words away;
+    /// every other cancellation keeps them in History. See endSession.
+    private var discardWords = false
     private var pressedAt = Date.distantPast
     private var startTask: Task<Bool, Never>?
     private var maxTimer: Timer?
@@ -60,6 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.listenController.toggle()
                 self?.listenWindow.show()
             },
+            onMoves: { [weak self] in self?.openMain(.moves) },
             onSetup: { [weak self] in self?.onboardingWindow.show() },
             onUpdates: { [weak self] in
                 UpdateCheck.markSeen()
@@ -80,17 +84,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.fileWindow.show()
             Task { await FileTranscriber.transcribe(url: url, into: self.fileModel) }
         }
+        // The Transcripts pane advertises drag-and-drop; give it the same
+        // flow the menu bar icon uses
+        MainWindowState.shared.transcribeFile = { [weak self] url in
+            guard let self else { return }
+            self.fileWindow.show()
+            Task { await FileTranscriber.transcribe(url: url, into: self.fileModel) }
+        }
 
         // First run, or any missing grant: open the setup assistant.
         // (Same test the assistant itself uses; the two must agree.)
+        // "tourSeen" is set by the tour page itself when it appears, so a
+        // user who arrives with permissions missing still gets the tour on
+        // the next launch. Marking it here marked it on the checklist run,
+        // which skipped the tour for exactly the users who needed it.
         if !OnboardingView.allPermissionsGranted() {
             onboardingWindow.show()
         } else if !UserDefaults.standard.bool(forKey: "tourSeen") {
             // Fully set up but never toured: show "the moves" exactly once
             onboardingWindow.show()
         }
-        UserDefaults.standard.set(true, forKey: "tourSeen")
 
+        UNUserNotificationCenter.current().delegate = self
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { granted, _ in
             if !granted {
                 Log.info("notifications denied; failures will surface as sounds only")
@@ -139,6 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 guard let self, self.handsFree else { return }
                 self.cancelled = true
+                self.discardWords = true
                 self.endSession(cancelled: true)
             }
         }
@@ -152,6 +168,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         fnMonitor.onCancel = { [weak self] in
             DispatchQueue.main.async { self?.cancelled = true }
+        }
+        fnMonitor.onDiscard = { [weak self] in
+            DispatchQueue.main.async {
+                self?.cancelled = true
+                self?.discardWords = true
+            }
         }
         fnMonitor.start()
 
@@ -255,12 +277,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                    enabled: ConfigStore.shared.blockSecureFields) {
             Log.info("dictation refused: focused field reports itself secure")
             Sound.refused()
-            Self.notify("Dictation blocked", body: SecureGuard.blockedNotice)
+            Self.notify("Dictation blocked", body: SecureGuard.blockedNotice,
+                        opens: .settings)
             return
         }
 
         busy = true
         cancelled = false
+        discardWords = false
         pressedAt = Date()
         ActivationPolicy.sessionBegan()
 
@@ -294,10 +318,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let config = ConfigStore.shared
         if config.hudEnabled || config.livePreview {
             var chip = activeStyle?.name
-            if activeStyle?.verbatim != true,
+            if activeStyle?.verbatim != true, config.cleanupEnabled,
                let target = Translation.resolve(
                    style: activeStyle, fallback: config.defaultTargetLanguage) {
-                chip = (chip.map { "\($0) " } ?? "") + "\u{2192} \(target)"
+                // Display name, not the raw code: the pickers say
+                // "Japanese", so the chip must not say "ja"
+                chip = (chip.map { "\($0) " } ?? "")
+                    + "\u{2192} \(Translation.displayName(target))"
             }
             hud.begin(
                 style: chip, startedAt: pressedAt, maxHold: maxHold,
@@ -328,6 +355,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 guard let self else { return }
                 self.pendingTapTimer = nil
                 self.cancelled = true
+                // Nothing meaningful fits in a sub-0.35s tap; recovering it
+                // would fill History with one-word noise
+                self.discardWords = true
                 self.endSession(cancelled: true)
             }
             return
@@ -370,29 +400,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             if wasCancelled {
-                // A cancelled dictation that ran a long time is more likely
-                // a slip than an intent to burn the words: transcribe it
-                // quietly into History, never paste
-                if heldFor > 30 {
-                    let recovered = (try? await transcriber.stop()) ?? ""
-                    // Never archive what a secure field would have received
-                    let secure = SecureGuard.shouldBlock(
-                        AXContext.focusSecurity(),
-                        enabled: ConfigStore.shared.blockSecureFields)
-                    if !recovered.isEmpty, !secure {
-                        HistoryStore.shared.add(
-                            raw: recovered, cleaned: recovered,
-                            appName: self.targetApp?.localizedName ?? "Unknown")
-                        StatsStore.shared.record(
-                            words: StatsStore.wordCount(recovered), seconds: heldFor,
-                            app: self.targetApp?.localizedName ?? "Unknown")
-                        Self.notify(
-                            "Dictation cancelled",
-                            body: "It ran \(Int(heldFor))s, so the transcript was saved to History instead of being discarded.")
-                    }
-                } else {
+                // Esc is the one explicit "burn it" gesture (and an
+                // accidental sub-hold tap has nothing worth keeping). Every
+                // other cancellation, a brushed key, an fn+arrow shortcut,
+                // an Esc-less slip, is more likely a slip than an intent to
+                // burn the words: transcribe quietly into History, never
+                // paste. Losing speech is the one unforgivable failure.
+                if self.discardWords {
                     await transcriber.abort()
+                    Sound.refused()
+                    return
                 }
+                let recovered = (try? await transcriber.stop()) ?? ""
+                // Never archive what a secure field would have received
+                let secure = SecureGuard.shouldBlock(
+                    AXContext.focusSecurity(),
+                    enabled: ConfigStore.shared.blockSecureFields)
+                if !recovered.isEmpty, !secure {
+                    HistoryStore.shared.add(
+                        raw: recovered, cleaned: recovered,
+                        appName: self.targetApp?.localizedName ?? "Unknown")
+                    StatsStore.shared.record(
+                        words: StatsStore.wordCount(recovered), seconds: heldFor,
+                        app: self.targetApp?.localizedName ?? "Unknown")
+                    Self.notify(
+                        "Dictation cancelled",
+                        body: "Nothing was pasted. The words were saved to History in case that was a slip.",
+                        opens: .dictations)
+                }
+                Sound.refused()
                 return
             }
             do {
@@ -414,7 +450,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         selection: selection, instruction: text) else {
                         Sound.failed()
                         Self.notify("Edit failed",
-                                    body: "Selection left unchanged. \(Cleanup.providerHint)")
+                                    body: "Selection left unchanged. \(Cleanup.providerHint)",
+                                    opens: .diagnostics)
                         self.hud.hide()
                         return
                     }
@@ -428,13 +465,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     let prepared = VoiceCommands.prepare(text, enabled: wantsCommands)
 
                     // Verbatim means exactly what was said, so it skips both
-                    // cleanup and translation.
+                    // cleanup and translation. Cleanup off skips translation
+                    // too: both passes are model calls, and off means the
+                    // model is never asked.
                     let verbatim = self.activeStyle?.verbatim == true
+                        || !ConfigStore.shared.cleanupEnabled
                     let target = verbatim ? nil : Translation.resolve(
                         style: self.activeStyle,
                         fallback: ConfigStore.shared.defaultTargetLanguage)
 
                     var pieces: [String] = []
+                    var translationFailed = false
                     for segment in prepared.segments {
                         var piece = segment
                         if !verbatim {
@@ -448,9 +489,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             self.hud.setProcessing("translating...")
                             if let translated = await Cleanup.translate(piece, to: target) {
                                 piece = translated
+                            } else {
+                                translationFailed = true
                             }
                         }
                         pieces.append(piece)
+                    }
+                    // Pasting the wrong language must never be silent: the
+                    // fallback is by design, being told about it is too.
+                    if translationFailed {
+                        Self.notify(
+                            "Translation unavailable",
+                            body: "Your words were pasted in the language you spoke. \(Cleanup.providerHint)",
+                            opens: .diagnostics)
                     }
 
                     let rejoined = VoiceCommands.rejoin(pieces, prepared)
@@ -469,7 +520,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                            enabled: ConfigStore.shared.blockSecureFields) {
                     Log.info("paste refused: focus moved into a secure field")
                     Sound.refused()
-                    Self.notify("Dictation discarded", body: SecureGuard.blockedNotice)
+                    Self.notify("Dictation discarded", body: SecureGuard.blockedNotice,
+                                opens: .settings)
                     self.hud.hide()
                     return
                 }
@@ -519,7 +571,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } catch {
                 Log.error("dictation error: \(error)")
                 Sound.failed()
-                Self.notify("Dictation failed", body: "\(error.localizedDescription)")
+                Self.notify("Dictation failed", body: "\(error.localizedDescription)",
+                            opens: .diagnostics)
                 self.hud.hide()
             }
         }
@@ -547,7 +600,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if chats == 3 {
                 d.set(true, forKey: "tipStyles")
                 Self.notify("Did you know?",
-                            body: "Styles adapt your writing per app. Give this one a casual voice in Settings > Styles.")
+                            body: "Styles adapt your writing per app. Give this one a casual voice in Settings > Styles.",
+                            opens: .styles)
             }
         }
     }
@@ -569,13 +623,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false
     }
 
-    static func notify(_ title: String, body: String) {
+    /// Where tapping a notification lands the user. Every body that names a
+    /// place ("Settings, Behavior", "saved to History") must carry the
+    /// matching destination, or the tap is a promise the app breaks.
+    enum NotifyDestination: String {
+        case dictations, styles, settings, diagnostics, updates
+    }
+
+    static func notify(_ title: String, body: String,
+                       opens destination: NotifyDestination? = nil) {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
+        if let destination {
+            content.userInfo = ["destination": destination.rawValue]
+        }
         UNUserNotificationCenter.current().add(
             UNNotificationRequest(identifier: UUID().uuidString,
                                   content: content, trigger: nil))
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    /// Without this, macOS suppresses banners while any yapping window is
+    /// frontmost, which silently swallowed every failure notice and tip
+    /// posted from the app's own UI.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let raw = response.notification.request.content
+            .userInfo["destination"] as? String
+        let destination = raw.flatMap(NotifyDestination.init(rawValue:))
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let destination else { return }
+            switch destination {
+            case .updates:
+                UpdateCheck.markSeen()
+                self.statusItem.setUpdateAvailable(false)
+                self.updatesWindow.show()
+            case .dictations: self.openMain(.dictations)
+            case .styles: self.openMain(.styles)
+            case .settings: self.openMain(.settings)
+            case .diagnostics: self.openMain(.diagnostics)
+            }
+        }
+        completionHandler()
     }
 }
 

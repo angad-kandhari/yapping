@@ -41,6 +41,7 @@ final class StatusItem {
         onHistory: @escaping () -> Void,
         onTranscribeFile: @escaping () -> Void,
         onListen: @escaping () -> Void,
+        onMoves: @escaping () -> Void,
         onSetup: @escaping () -> Void,
         onUpdates: @escaping () -> Void,
         onQuit: @escaping () -> Void
@@ -55,7 +56,8 @@ final class StatusItem {
         let target = MenuTarget(
             onSettings: onSettings, onHistory: onHistory,
             onTranscribeFile: onTranscribeFile, onListen: onListen,
-            onSetup: onSetup, onUpdates: onUpdates, onQuit: onQuit)
+            onMoves: onMoves, onSetup: onSetup, onUpdates: onUpdates,
+            onQuit: onQuit)
         objc_setAssociatedObject(menu, "target", target, .OBJC_ASSOCIATION_RETAIN)
 
         func add(_ title: String, _ action: Selector, _ key: String = "") -> NSMenuItem {
@@ -70,6 +72,7 @@ final class StatusItem {
         _ = add("Transcribe File", #selector(MenuTarget.transcribeFile))
         listenItem = add("Listen to System Audio", #selector(MenuTarget.listen), "l")
         menu.addItem(.separator())
+        _ = add("The Moves", #selector(MenuTarget.moves))
         _ = add("Setup Assistant", #selector(MenuTarget.setup))
         updatesItem = add("Check for Updates", #selector(MenuTarget.updates))
         menu.addItem(.separator())
@@ -239,6 +242,7 @@ private final class MenuTarget: NSObject {
     private let onHistory: () -> Void
     private let onTranscribeFile: () -> Void
     private let onListen: () -> Void
+    private let onMoves: () -> Void
     private let onSetup: () -> Void
     private let onUpdates: () -> Void
     private let onQuit: () -> Void
@@ -248,6 +252,7 @@ private final class MenuTarget: NSObject {
         onHistory: @escaping () -> Void,
         onTranscribeFile: @escaping () -> Void,
         onListen: @escaping () -> Void,
+        onMoves: @escaping () -> Void,
         onSetup: @escaping () -> Void,
         onUpdates: @escaping () -> Void,
         onQuit: @escaping () -> Void
@@ -256,6 +261,7 @@ private final class MenuTarget: NSObject {
         self.onHistory = onHistory
         self.onTranscribeFile = onTranscribeFile
         self.onListen = onListen
+        self.onMoves = onMoves
         self.onSetup = onSetup
         self.onUpdates = onUpdates
         self.onQuit = onQuit
@@ -265,6 +271,7 @@ private final class MenuTarget: NSObject {
     @objc func history() { onHistory() }
     @objc func transcribeFile() { onTranscribeFile() }
     @objc func listen() { onListen() }
+    @objc func moves() { onMoves() }
     @objc func setup() { onSetup() }
     @objc func updates() { onUpdates() }
     @objc func quit() { onQuit() }

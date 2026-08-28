@@ -182,6 +182,24 @@ final class StatsStore: ObservableObject {
         }
     }
 
+    /// Clear history wipes the words; this wipes the numbers. A
+    /// privacy-forward app that can delete one but not the other reads as
+    /// an oversight. The one-time backfill stays spent ("statsSeeded"), so
+    /// cleared stats are not quietly re-derived from History at next launch.
+    func clear() {
+        DispatchQueue.main.async {
+            self.data = StatsData()
+            self.save()
+        }
+    }
+
+    /// The numbers, and only the numbers, as pretty JSON.
+    func exportJSON() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(data)
+    }
+
     /// One-time seed from existing history (word counts and dates only;
     /// no durations were recorded back then, so those days carry words
     /// but do not distort WPM).

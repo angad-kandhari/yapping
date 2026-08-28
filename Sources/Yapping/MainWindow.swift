@@ -1,9 +1,9 @@
 import AppKit
 import SwiftUI
 
-/// The seven sections behind the rail.
+/// The sections behind the rail, in rail order.
 enum MainSection: String, CaseIterable, Identifiable {
-    case dictations, stats, transcripts, styles, dictionary, settings, diagnostics, privacy
+    case dictations, stats, transcripts, styles, dictionary, settings, diagnostics, privacy, moves
     var id: String { rawValue }
 
     var label: String {
@@ -16,6 +16,7 @@ enum MainSection: String, CaseIterable, Identifiable {
         case .settings: return "Settings"
         case .diagnostics: return "Diagnostics"
         case .privacy: return "Privacy"
+        case .moves: return "Moves"
         }
     }
 
@@ -29,6 +30,7 @@ enum MainSection: String, CaseIterable, Identifiable {
         case .settings: return "gearshape"
         case .diagnostics: return "stethoscope"
         case .privacy: return "checkmark.shield"
+        case .moves: return "questionmark.circle"
         }
     }
 }
@@ -37,6 +39,9 @@ enum MainSection: String, CaseIterable, Identifiable {
 final class MainWindowState: ObservableObject {
     static let shared = MainWindowState()
     @Published var section: MainSection = .dictations
+    /// Set by AppDelegate; lets panes hand a dropped file to the same
+    /// transcription flow as the menu bar icon.
+    var transcribeFile: ((URL) -> Void)?
 }
 
 /// The 2.0 main window: a dark hover-expanding icon rail on the left,
@@ -67,6 +72,7 @@ struct MainWindowView: View {
         case .settings: SettingsPane()
         case .diagnostics: DiagnosticsPane()
         case .privacy: PrivacyPane()
+        case .moves: MovesPane()
         }
     }
 }
@@ -332,6 +338,14 @@ struct TranscriptsPane: View {
         }
         .padding(.horizontal, 36)
         .padding(.top, 48)
+        // The empty state advertises dropping a file, so the pane itself
+        // must accept one; a promise in copy is a promise in behavior
+        .dropDestination(for: URL.self) { urls, _ in
+            guard let url = urls.first,
+                  let handler = MainWindowState.shared.transcribeFile else { return false }
+            handler(url)
+            return true
+        }
     }
 
     private var list: some View {
@@ -339,7 +353,7 @@ struct TranscriptsPane: View {
             PaneHeader(title: "transcripts",
                        sub: "listen sessions and transcribed files, with their notes")
             if store.entries.isEmpty {
-                Text("Start Listen from the menu bar, or drop an audio file on the icon. Finished transcripts land here.")
+                Text("Start Listen from the menu bar, drop an audio or video file here, or drop one on the menu bar icon. Finished transcripts land in this pane.")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {

@@ -116,7 +116,10 @@ private struct GeneralSettings: View {
                         Text(Translation.displayName(code)).tag(code)
                     }
                 }
-                Text("Speak in one language and have another land at your cursor. A style can override this. Translation runs on your cleanup provider, so it stays on this Mac, and it adds a second model call per dictation.")
+                // Translation is a model call, so cleanup-off disables it
+                // too; a user who turned the model off must get zero calls
+                .disabled(!config.cleanupEnabled)
+                Text("Speak in one language and have another land at your cursor. A style can override this. Translation runs on your cleanup provider, so it stays on this Mac, and it adds a second model call per dictation. Turning cleanup off turns this off too.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Spoken commands") {
@@ -157,7 +160,7 @@ private struct GeneralSettings: View {
             }
         }
         .formStyle(.grouped)
-        .task(id: "\(config.cleanupProvider)|\(config.ollamaHost)|\(config.cleanupEnabled)") {
+        .task(id: "\(config.cleanupProvider)|\(config.ollamaHost)|\(config.cleanupEnabled)|\(config.customBaseURL)") {
             await refreshProviderStatus()
         }
         .task {
@@ -193,7 +196,15 @@ private struct GeneralSettings: View {
                 ? "Ollama is reachable at \(config.ollamaHost)"
                 : "Ollama is not responding at \(config.ollamaHost)", up)
         default:
-            providerStatus = ("Custom endpoints are checked at first use.", true)
+            let base = config.customBaseURL.trimmingCharacters(in: .whitespaces)
+            guard !base.isEmpty else {
+                providerStatus = ("Enter the endpoint's base URL.", false)
+                return
+            }
+            let up = await Cleanup.customReachable()
+            providerStatus = (up
+                ? "The endpoint answered at \(base)"
+                : "Nothing answered at \(base)", up)
         }
     }
 }
@@ -283,17 +294,49 @@ private struct StylesSettings: View {
     @ObservedObject var config = ConfigStore.shared
     @State private var styleToDelete: Style?
 
+    /// Nobody knows their terminal is "com.mitchellh.ghostty"; the running
+    /// apps do.
+    private var runningApps: [(name: String, bundleID: String)] {
+        NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular }
+            .compactMap { app in
+                guard let name = app.localizedName,
+                      let id = app.bundleIdentifier else { return nil }
+                return (name, id)
+            }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
     var body: some View {
         Form {
+            Section {
+                Text("When an app matches more than one style, the one listed first wins. Use the arrows to reorder.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             ForEach($config.styles) { $style in
                 Section(style.name.isEmpty ? "Style" : style.name) {
                     TextField("Name", text: $style.name)
-                    TextField("Applies when bundle id contains (comma separated)",
-                              text: Binding(
-                                get: { style.appPatterns.joined(separator: ", ") },
-                                set: { style.appPatterns = $0.split(separator: ",")
-                                    .map { $0.trimmingCharacters(in: .whitespaces) } }))
+                    HStack {
+                        TextField("Applies when bundle id contains (comma separated)",
+                                  text: Binding(
+                                    get: { style.appPatterns.joined(separator: ", ") },
+                                    set: { style.appPatterns = $0.split(separator: ",")
+                                        .map { $0.trimmingCharacters(in: .whitespaces) } }))
+                        Menu {
+                            ForEach(runningApps, id: \.bundleID) { app in
+                                Button("\(app.name) (\(app.bundleID))") {
+                                    guard !style.appPatterns.contains(app.bundleID) else { return }
+                                    style.appPatterns.append(app.bundleID)
+                                }
+                            }
+                        } label: {
+                            Label("Add app", systemImage: "plus")
+                        }
+                        .fixedSize()
+                        .help("Pick a running app instead of typing its bundle id")
+                    }
                     Toggle("Verbatim (skip cleanup entirely)", isOn: $style.verbatim)
+                    Toggle("Honor spoken commands", isOn: $style.voiceCommands)
                     if !style.verbatim {
                         Picker("Paste in", selection: $style.targetLanguage) {
                             Text("The language you spoke").tag("")
@@ -314,9 +357,27 @@ private struct StylesSettings: View {
                             .frame(minHeight: 56)
                     }
                     StyleTester(style: style)
-                    Button(role: .destructive) {
-                        styleToDelete = style
-                    } label: { Text("Delete style") }
+                    HStack {
+                        Button(role: .destructive) {
+                            styleToDelete = style
+                        } label: { Text("Delete style") }
+                        Spacer()
+                        let index = config.styles.firstIndex { $0.id == style.id }
+                        Button {
+                            if let index, index > 0 {
+                                config.styles.swapAt(index, index - 1)
+                            }
+                        } label: { Image(systemName: "chevron.up") }
+                        .disabled(index == 0)
+                        .help("Match earlier")
+                        Button {
+                            if let index, index < config.styles.count - 1 {
+                                config.styles.swapAt(index, index + 1)
+                            }
+                        } label: { Image(systemName: "chevron.down") }
+                        .disabled(index == config.styles.count - 1)
+                        .help("Match later")
+                    }
                 }
             }
             Button("Add style") {
@@ -353,6 +414,7 @@ private struct StyleTester: View {
     @State private var elapsed: Int?
     @State private var running = false
     @State private var expanded = false
+    @State private var warning: String?
 
     var body: some View {
         DisclosureGroup("Test this style", isExpanded: $expanded) {
@@ -376,6 +438,10 @@ private struct StyleTester: View {
                 } else if !config.cleanupEnabled {
                     Text("Cleanup is turned off in Settings, so the raw transcript is what gets pasted.")
                         .font(.caption).foregroundStyle(.secondary)
+                }
+
+                if let warning {
+                    Text(warning).font(.caption).foregroundStyle(.orange)
                 }
 
                 if let result {
@@ -405,6 +471,7 @@ private struct StyleTester: View {
     private func run() {
         running = true
         result = nil
+        warning = nil
         let text = sample
         let chosen = style
         Task {
@@ -423,9 +490,19 @@ private struct StyleTester: View {
             let joined = VoiceCommands.rejoin(pieces, prepared)
             let final = config.applyTextRules(to: joined)
             let ms = Int(Date().timeIntervalSince(started) * 1000)
+            // A dead provider makes polish return its input, which looks
+            // exactly like "already clean". Tell the difference, because a
+            // tester that shows your sample back as a result teaches the
+            // wrong lesson about the prompt being tested.
+            var hint: String?
+            if !chosen.verbatim, config.cleanupEnabled, final == text,
+               await !Cleanup.providerHealthy() {
+                hint = "The provider did not answer, so this is your sample unchanged. \(Cleanup.providerHint)"
+            }
             await MainActor.run {
                 result = final
                 elapsed = ms
+                warning = hint
                 running = false
             }
         }
