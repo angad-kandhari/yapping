@@ -18,11 +18,15 @@ let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 
 // LSUIElement apps get no main menu for free, which kills cmd-C/V/X/A/Z
-// in every text field and cmd-W on windows. Install the minimum.
+// in every text field, cmd-W on windows, and cmd-H while the app is in
+// the Dock. Install the minimum.
 let mainMenu = NSMenu()
 let appMenuItem = NSMenuItem()
 mainMenu.addItem(appMenuItem)
 let appMenu = NSMenu()
+appMenu.addItem(withTitle: "Hide Yapping",
+                action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+appMenu.addItem(.separator())
 appMenu.addItem(withTitle: "Quit Yapping",
                 action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 appMenuItem.submenu = appMenu

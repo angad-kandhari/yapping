@@ -553,8 +553,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// A Dock icon exists while a window is open, so clicking it should
-    /// bring the app back rather than doing nothing.
+    /// bring the app back rather than doing nothing. The unhide matters:
+    /// after cmd-H the app is hidden with its window still open, and
+    /// reopening without unhiding would leave the click doing nothing.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        if sender.isHidden { sender.unhide(nil) }
         if !hasVisibleWindows { openMain(.dictations) }
         return true
     }
