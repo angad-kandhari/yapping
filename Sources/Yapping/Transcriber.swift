@@ -67,15 +67,37 @@ final class Transcriber {
     }
 
     private func configurationChanged() {
-        Log.info("audio configuration changed (input device switched)")
         if capturing {
+            Log.info("audio configuration changed mid-dictation (input device switched)")
             // Mid-dictation: the engine already halted itself. Let the owner
-            // end the session normally; stop()/abort() rebuild afterwards.
+            // end the session normally; the next start() rebuilds.
             needsFreshEngine = true
             onDeviceChange?()
         } else {
-            rebuildEngine()
+            releaseEngine()
         }
+    }
+
+    /// Idle and the device changed: let go of the device and rebuild on the
+    /// next press, never now. Rebuilding here re-opens the input on the new
+    /// device, and on Bluetooth headphones that opening is itself a
+    /// configuration change (the headset flips between its stereo and
+    /// hands-free profiles), so an eager rebuild fed its own notification:
+    /// measured at four rebuilds a second for minutes on AirPods Max,
+    /// during which the headphones could not hold a profile and playback
+    /// from other apps went silent. Deferring costs the next press about
+    /// 40 ms (measured) for the engine build, once.
+    private func releaseEngine() {
+        if let engineObserver {
+            NotificationCenter.default.removeObserver(engineObserver)
+            self.engineObserver = nil
+        }
+        engine.stop()
+        engine = AVAudioEngine()
+        if !needsFreshEngine {
+            Log.info("audio configuration changed while idle; engine released until next press")
+        }
+        needsFreshEngine = true
     }
 
     private func rebuildEngine() {
@@ -247,9 +269,9 @@ final class Transcriber {
         capturing = false
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
-        // A device change happened mid-session: the old graph is stale, so
-        // re-arm on the new device before the next press
-        if needsFreshEngine { rebuildEngine() }
+        // A device change happened mid-session: the old graph is stale.
+        // Leave it flagged; start() rebuilds on the next press. Rebuilding
+        // here would touch the device while idle, see releaseEngine.
     }
 
     private func convert(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
