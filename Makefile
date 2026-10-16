@@ -11,7 +11,7 @@ ifeq ($(IDENTITY),)
 IDENTITY := $(shell security find-identity -v -p codesigning | grep -o '"Apple Development[^"]*"' | head -1)
 endif
 
-.PHONY: build bundle sign notarize install run clean
+.PHONY: build bundle sign notarize install run clean republish
 
 build:
 	swift build -c release --arch arm64
@@ -79,7 +79,13 @@ ifneq (,$(findstring Developer ID,$(IDENTITY)))
 ifeq ($(NOTARY_READY),yes)
 	$(MAKE) notarize
 else
-	@echo "no notarytool credentials (run: xcrun notarytool store-credentials yapping); releasing without notarization"
+	# A Developer ID build that is not notarized is rejected by Gatekeeper
+	# on every download, so this is a hard stop, not a warning. The probe
+	# fails for missing credentials AND for an expired developer agreement
+	# (HTTP 403); the command below shows which.
+	@echo "notarization is not possible right now; refusing to publish an unnotarized Developer ID build"
+	@xcrun notarytool history --keychain-profile yapping 2>&1 | head -3
+	@exit 1
 endif
 else
 	@echo "no Developer ID identity; releasing without notarization"
@@ -92,3 +98,13 @@ endif
 		.build/Yapping.dmg \
 		.build/Yapping-v$(VERSION).zip \
 		--title "Yapping v$(VERSION)" $(if $(NOTES),--notes-file $(NOTES),--generate-notes)
+
+# A release that had to stop short of notarization (expired developer
+# agreement, missing credentials) sits as a draft. Once notarization works
+# again: notarize the rebuilt app, repackage from the stapled bundle, swap
+# the assets on the existing draft, and publish it under its tag.
+republish: notarize
+	bash scripts/make-dmg.sh .build/Yapping.dmg
+	ditto -c -k --keepParent $(APP) .build/Yapping-v$(VERSION).zip
+	gh release upload v$(VERSION) .build/Yapping.dmg .build/Yapping-v$(VERSION).zip --clobber
+	gh release edit v$(VERSION) --draft=false
