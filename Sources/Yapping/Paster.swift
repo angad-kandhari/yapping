@@ -57,8 +57,16 @@ enum Paster {
         vUp?.post(tap: .cghidEventTap)
 
         guard !previous.isEmpty else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        // The target app reads the pasteboard whenever it gets around to
+        // the keystroke, which under load (the cleanup model has just
+        // finished using the whole machine) can be later than the restore
+        // used to run, so the OLD clipboard got pasted. Give it longer, and
+        // only restore while our text is still what is on the pasteboard:
+        // if the user copied something in the meantime, that wins.
+        let ours = pasteboard.changeCount
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             let pb = NSPasteboard.general
+            guard pb.changeCount == ours else { return }
             pb.clearContents()
             pb.writeObjects(previous)
         }

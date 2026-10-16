@@ -29,7 +29,7 @@ struct MovesPane: View {
             row("Hold and talk",
                 "Hold the globe (fn) key, speak, release. The words land at your cursor.")
             row("Double-tap for hands-free",
-                "Tap globe twice to talk without holding. Tap again, press Esc, or go quiet to finish.")
+                "Tap globe twice to talk without holding. Tap again or go quiet to finish; Esc discards, same as while holding.")
             row("Edit by voice",
                 "Select any text first, then hold globe and speak an instruction. The selection is rewritten.")
             row("Esc while holding",

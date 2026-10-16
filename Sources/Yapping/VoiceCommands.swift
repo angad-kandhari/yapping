@@ -56,9 +56,13 @@ enum VoiceCommands {
         var working = applyCaps(scratch(text))
 
         // Punctuation becomes real characters. The cleanup model preserves
-        // wording, so a comma it can see is a comma it keeps.
+        // wording, so a comma it can see is a comma it keeps. Each inserted
+        // character carries a private mark so `tidy` can fix the spacing
+        // around exactly these and leave the speaker's own "example.com",
+        // "e.g." and "./src" alone; it used to space out every period.
         for (phrase, insert) in punctuation {
-            working = replacingSpokenPhrase(in: working, phrase: phrase, with: insert)
+            working = replacingSpokenPhrase(
+                in: working, phrase: phrase, with: insertedMark + insert)
         }
 
         // Line breaks become split points, using a placeholder that exists
@@ -175,14 +179,21 @@ enum VoiceCommands {
             withTemplate: NSRegularExpression.escapedTemplate(for: replacement))
     }
 
-    /// No space before punctuation, one after. Cheap to get wrong and very
-    /// visible when it is.
+    /// Precedes every punctuation character that came from a spoken
+    /// command. Exists only between `prepare` and `tidy`; never reaches a
+    /// model or the pasted text.
+    private static let insertedMark = "\u{0002}"
+
+    /// No space before spoken punctuation, one after. Only punctuation that
+    /// a command inserted is touched: anything the recognizer wrote itself
+    /// (URLs, "e.g.", decimals, paths) is the speaker's and stays as is.
     static func tidy(_ text: String) -> String {
         var out = text
         out = out.replacingOccurrences(
-            of: #"[ \t]+([,.!?])"#, with: "$1", options: .regularExpression)
+            of: #"[ \t]*\x{0002}([,.!?])"#, with: "$1", options: .regularExpression)
         out = out.replacingOccurrences(
-            of: #"([,.!?])(?=[^\s\d])"#, with: "$1 ", options: .regularExpression)
+            of: #"\x{0002}([,.!?])(?=[^\s\x{0002}])"#, with: "$1 ", options: .regularExpression)
+        out = out.replacingOccurrences(of: insertedMark, with: "")
         out = out.replacingOccurrences(
             of: #"[ \t]{2,}"#, with: " ", options: .regularExpression)
         return out.trimmingCharacters(in: .whitespaces)

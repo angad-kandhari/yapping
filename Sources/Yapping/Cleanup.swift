@@ -349,9 +349,14 @@ enum Cleanup {
             return nil
         }
         do {
-            let session = LanguageModelSession(instructions: system)
-            let response = try await session.respond(to: user)
-            return response.content
+            // Same ceiling as the Ollama request. The on-device model has no
+            // timeout of its own, and a response that never comes used to
+            // hold the dictation session open until relaunch.
+            return try await withDeadline(seconds: 45, step: "Apple Intelligence cleanup") {
+                let session = LanguageModelSession(instructions: system)
+                let response = try await session.respond(to: user)
+                return response.content
+            }
         } catch {
             // Includes safety refusals; the guards and fallbacks handle it
             Log.error("apple model cleanup failed: \(error)")

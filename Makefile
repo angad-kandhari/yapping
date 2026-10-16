@@ -1,5 +1,9 @@
 APP      := .build/Yapping.app
-BINARY   := .build/arm64-apple-macosx/release/yapping
+# Ask SwiftPM where the --arch build lands instead of guessing: the layout
+# moved (arm64-apple-macosx/release, then apple/Products, now out/Products)
+# and a hardcoded path installed a stale binary from a previous toolchain
+# without a word of warning.
+BINARY   := $(shell swift build -c release --arch arm64 --show-bin-path)/yapping
 # Developer ID first (notarizable, downloads pass Gatekeeper); fall back to
 # Apple Development for machines that only have the free-tier cert
 IDENTITY := $(shell security find-identity -v -p codesigning | grep -o '"Developer ID Application[^"]*"' | head -1)

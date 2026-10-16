@@ -7,7 +7,9 @@ import UserNotifications
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let fnMonitor = FnKeyMonitor()
-    private let transcriber = Transcriber()
+    /// Replaced wholesale if a capture ever stops answering (see endSession),
+    /// so one wedged CoreAudio call cannot take the hotkey down with it.
+    private lazy var transcriber = makeTranscriber()
     private var statusItem: StatusItem!
     private lazy var mainWindow = UtilityWindow(title: "Yapping") { MainWindowView() }
     private lazy var onboardingWindow = UtilityWindow(title: "Welcome to yapping") {
@@ -26,13 +28,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onStop: { self?.listenController.stop() })
     }
 
+    /// A session exists: from the press until the pipeline has pasted (or
+    /// given up). New presses are refused while this is true.
     private var busy = false
+    /// The mic is open and the key gestures mean something. False the moment
+    /// endSession runs, while `busy` stays true through transcription and
+    /// cleanup. The two used to be one flag, and a press-and-release during
+    /// cleanup re-entered endSession on a finished transcriber: a failure
+    /// sound, `busy` cleared early, and the activation policy switched before
+    /// the first dictation had pasted.
+    private var recording = false
     private var cancelled = false
     /// Esc (or an accidental sub-hold tap) means throw the words away;
     /// every other cancellation keeps them in History. See endSession.
     private var discardWords = false
     private var pressedAt = Date.distantPast
-    private var startTask: Task<Bool, Never>?
+    /// Nil result means the mic opened; otherwise why it did not.
+    private var startTask: Task<Error?, Never>?
+    /// The recognizer's running transcript. If the final stop ever fails
+    /// or times out, this is what gets saved so the words are not lost.
+    private var livePartial = ""
+    /// Set when the capture had to re-arm or end because the input device
+    /// changed; the notification that follows must say so.
+    private var deviceChanged = false
     private var maxTimer: Timer?
     private var targetApp: NSRunningApplication?
     private var localeWatcher: AnyCancellable?
@@ -51,6 +69,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let minHold: TimeInterval = 0.35
     /// Safety stop for a stuck key.
     private let maxHold: TimeInterval = 300
+    /// How long the mic gets to open or close before the session is reset.
+    /// CoreAudio can stall during a Bluetooth profile flip; without a
+    /// deadline that stall held `busy` forever and the hotkey went dead.
+    private let audioDeadline: Double = 10
+
+    private func makeTranscriber() -> Transcriber {
+        Transcriber(
+            onLevel: { [weak self] level in
+                self?.statusItem.pushLevel(level)
+                self?.hud.pushLevel(level)
+                self?.voiceActivity(level)
+                // Diagnostics draws a live meter from this for free
+                Task { @MainActor in LevelBus.shared.push(level) }
+            },
+            onPartial: { [weak self] text in
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    self.livePartial = text
+                    if ConfigStore.shared.livePreview { self.hud.setText(text) }
+                }
+            },
+            // The device changed mid-dictation and capture could not follow
+            // it: finish with what was said instead of crashing on the dead
+            // audio graph. (A change capture can follow never reaches here.)
+            onDeviceChange: { [weak self] in
+                DispatchQueue.main.async {
+                    guard let self, self.recording else { return }
+                    Log.info("input device changed mid-session; finishing dictation")
+                    self.deviceChanged = true
+                    // fn may still be physically held; swallow that release so
+                    // it does not read as a new gesture. Hands-free holds no key.
+                    if !self.handsFree { self.ignoreNextRelease = true }
+                    self.endSession(cancelled: false)
+                }
+            })
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         MoveToApplications.offerIfNeeded()
@@ -128,31 +182,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] _ in
                 Task { try? await self?.transcriber.ensureModel() }
             }
-        transcriber.onLevel = { [weak self] level in
-            self?.statusItem.pushLevel(level)
-            self?.hud.pushLevel(level)
-            self?.voiceActivity(level)
-            // Diagnostics draws a live meter from this for free
-            Task { @MainActor in LevelBus.shared.push(level) }
-        }
-        transcriber.onPartial = { [weak self] text in
-            guard ConfigStore.shared.livePreview else { return }
-            self?.hud.setText(text)
-        }
-        // AirPods (or any device) connecting mid-dictation: finish the
-        // session gracefully with what was said instead of crashing on the
-        // dead audio graph
-        transcriber.onDeviceChange = { [weak self] in
-            guard let self, self.busy else { return }
-            Log.info("input device changed mid-session; finishing dictation")
-            // fn may still be physically held; swallow that release so it
-            // does not read as a new gesture. Hands-free holds no key.
-            if !self.handsFree { self.ignoreNextRelease = true }
-            self.endSession(cancelled: false)
-        }
         fnMonitor.onEscape = { [weak self] in
             DispatchQueue.main.async {
-                guard let self, self.handsFree else { return }
+                guard let self, self.handsFree, self.recording else { return }
                 self.cancelled = true
                 self.discardWords = true
                 self.endSession(cancelled: true)
@@ -166,13 +198,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         fnMonitor.onRelease = { [weak self] in
             DispatchQueue.main.async { self?.fnReleased() }
         }
+        // Cancel and discard only mean something while the mic is open. A
+        // key chord during cleanup used to flip `cancelled` on the session
+        // being cleaned up, which then dropped the finished text on the
+        // floor without so much as a History entry.
         fnMonitor.onCancel = { [weak self] in
-            DispatchQueue.main.async { self?.cancelled = true }
+            DispatchQueue.main.async {
+                guard let self, self.recording else { return }
+                self.cancelled = true
+            }
         }
         fnMonitor.onDiscard = { [weak self] in
             DispatchQueue.main.async {
-                self?.cancelled = true
-                self?.discardWords = true
+                guard let self, self.recording else { return }
+                self.cancelled = true
+                self.discardWords = true
             }
         }
         fnMonitor.start()
@@ -264,7 +304,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             endSession(cancelled: false)
             return
         }
-        guard !busy else { return }
+        guard !busy else {
+            Log.info("press ignored: the previous dictation is still being processed")
+            return
+        }
 
         // Password fields: refuse before the mic ever opens, so nothing is
         // recorded, nothing reaches the cleanup model, and nothing lands in
@@ -283,20 +326,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         busy = true
+        recording = true
         cancelled = false
         discardWords = false
+        deviceChanged = false
+        livePartial = ""
+        // A press proves the previous release already happened, so any
+        // swallow still pending is stale. Left set, it ate the release of
+        // this dictation and the mic ran on to the five-minute cap.
+        ignoreNextRelease = false
         pressedAt = Date()
         ActivationPolicy.sessionBegan()
+        Log.info("session start")
 
         // Mic first, everything else after: every millisecond before the
         // engine starts is a millisecond of the user's first word at risk
+        let transcriber = self.transcriber
+        let deadline = audioDeadline
         startTask = Task {
             do {
-                try await transcriber.start()
-                return true
+                try await withDeadline(seconds: deadline, step: "Opening the microphone") {
+                    try await transcriber.start()
+                }
+                return nil
             } catch {
                 Log.error("could not start recording: \(error)")
-                return false
+                return error
             }
         }
 
@@ -344,7 +399,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ignoreNextRelease = false
             return
         }
-        guard busy, !handsFree else { return }
+        guard busy, recording, !handsFree else { return }
 
         if Date().timeIntervalSince(pressedAt) < minHold {
             // Might be the first tap of a double-tap: keep recording for a
@@ -368,7 +423,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Ends the current session (hold release, hands-free stop, Esc, or
     /// max-duration) and runs the pipeline unless cancelled.
     private func endSession(cancelled wasCancelled: Bool) {
-        guard busy else { return }
+        guard busy, recording else { return }
+        recording = false
         maxTimer?.invalidate()
         maxTimer = nil
         pendingTapTimer?.invalidate()
@@ -383,6 +439,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.setState(wasCancelled ? .idle : .processing)
         if !wasCancelled { Sound.play("Tink") }
         let heldFor = Date().timeIntervalSince(pressedAt)
+        let transcriber = self.transcriber
+        let deadline = audioDeadline
 
         Task {
             defer {
@@ -391,12 +449,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // After the paste and after any "send it" Return, so a policy
                 // change can never precede text landing in the target app
                 ActivationPolicy.sessionEnded()
+                Log.info("session end: held \(String(format: "%.1f", heldFor)) s")
             }
-            let started = await startTask?.value ?? false
-            guard started else {
+            let startError: Error?
+            if let startTask { startError = await startTask.value } else { startError = YappingError.inputNotReady }
+            if let startError {
                 Sound.failed()
-                await transcriber.abort()
                 hud.hide()
+                if case YappingError.timedOut = startError {
+                    // The open is still blocked inside CoreAudio (Bluetooth
+                    // headsets switching to their microphone take seconds
+                    // while they are playing audio). Do not queue behind it:
+                    // hand the hotkey a fresh transcriber now, and let the
+                    // stuck one close the mic whenever it finally returns.
+                    Self.notify("The microphone took too long to open",
+                                body: "Bluetooth headphones can take a while to switch to their microphone, longer while they are playing audio. Try again.",
+                                opens: .diagnostics)
+                    replaceTranscriber(transcriber)
+                    Task { await transcriber.abort() }
+                } else {
+                    Self.notify("Dictation failed",
+                                body: "The microphone could not be opened. \(deviceChanged ? "The input device changed while it was starting. " : "")Try again in a moment.",
+                                opens: .diagnostics)
+                    await abortCapture(transcriber)
+                }
                 return
             }
             if wasCancelled {
@@ -407,11 +483,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // burn the words: transcribe quietly into History, never
                 // paste. Losing speech is the one unforgivable failure.
                 if self.discardWords {
-                    await transcriber.abort()
+                    await abortCapture(transcriber)
                     Sound.refused()
                     return
                 }
-                let recovered = (try? await transcriber.stop()) ?? ""
+                let recovered = await stopCapture(transcriber, deadline: deadline) ?? self.livePartial
                 // Never archive what a secure field would have received
                 let secure = SecureGuard.shouldBlock(
                     AXContext.focusSecurity(),
@@ -432,9 +508,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             do {
-                let text = try await transcriber.stop()
+                // Nothing below throws any more (every await is bounded and
+                // reports its own failure), but one defensive catch for a
+                // future throwing call is worth the line.
+                try Task.checkCancellation()
+                // A stop that fails or stalls must not cost the words: the
+                // live partial is the recognizer's own running transcript
+                // and is usually complete to within the last phrase.
+                var text = await stopCapture(transcriber, deadline: deadline) ?? ""
+                if text.isEmpty, !self.livePartial.isEmpty {
+                    text = self.livePartial.trimmingCharacters(in: .whitespacesAndNewlines)
+                    Log.error("final transcript was empty; using the live partial (\(text.count) chars)")
+                }
                 guard !text.isEmpty else {
                     Sound.failed()
+                    if self.deviceChanged {
+                        Self.notify("Nothing was heard",
+                                    body: "The input device changed while you were talking. Try again.",
+                                    opens: .diagnostics)
+                    }
                     hud.hide()
                     return
                 }
@@ -559,6 +651,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 }
                 self.hud.finish()
+                Log.info("pasted \(output.count) chars into \(self.targetApp?.localizedName ?? "Unknown")")
+                if self.deviceChanged {
+                    Self.notify("Input device changed mid-dictation",
+                                body: "Capture followed it. If words are missing, they are in History.",
+                                opens: .dictations)
+                }
                 HistoryStore.shared.add(
                     raw: text, cleaned: output,
                     appName: self.targetApp?.localizedName ?? "Unknown",
@@ -576,6 +674,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.hud.hide()
             }
         }
+    }
+
+    /// Stop with a deadline. Nil means the stop failed or stalled; the
+    /// caller falls back to the live partial. A stalled transcriber is
+    /// abandoned and replaced so the next press gets a fresh one instead of
+    /// queueing behind a wedged CoreAudio call.
+    private func stopCapture(_ transcriber: Transcriber, deadline: Double) async -> String? {
+        do {
+            return try await withDeadline(seconds: deadline, step: "Closing the microphone") {
+                try await transcriber.stop()
+            }
+        } catch {
+            Log.error("stop failed: \(error)")
+            if case YappingError.timedOut = error { replaceTranscriber(transcriber) }
+            return nil
+        }
+    }
+
+    private func abortCapture(_ transcriber: Transcriber) async {
+        do {
+            try await withDeadline(seconds: audioDeadline, step: "Closing the microphone") {
+                await transcriber.abort()
+            }
+        } catch {
+            Log.error("abort stalled: \(error)")
+            replaceTranscriber(transcriber)
+        }
+    }
+
+    private func replaceTranscriber(_ stalled: Transcriber) {
+        guard stalled === transcriber else { return }
+        Log.error("transcriber is not responding; replacing it")
+        transcriber = makeTranscriber()
     }
 
     /// At most three one-time tips, tied to real usage, never repeated.

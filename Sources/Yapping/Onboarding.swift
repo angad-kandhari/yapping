@@ -132,7 +132,7 @@ struct OnboardingView: View {
             move("globe", "Hold and talk",
                  "Hold the globe key, speak, release. Your words land at the cursor, cleaned up.")
             move("hand.tap", "Double-tap for hands-free",
-                 "Tap the globe key twice to talk without holding. Tap again or press Esc to finish.")
+                 "Tap the globe key twice to talk without holding. Tap again to finish; Esc throws it away.")
             move("text.cursor", "Edit by voice",
                  "Select any text, hold the globe key, and speak an instruction. The selection is rewritten.")
             move("text.append", "Speak your punctuation",

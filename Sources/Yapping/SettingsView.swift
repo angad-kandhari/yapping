@@ -136,7 +136,7 @@ private struct GeneralSettings: View {
             }
             Section("Hands-free") {
                 Toggle("Silence ends hands-free dictation", isOn: $config.handsFreeAutoStop)
-                Text("Double-tap \u{1F310} to talk without holding; tap again or press Esc to finish. With this on, about 2.5 seconds of quiet also finishes.")
+                Text("Double-tap \u{1F310} to talk without holding; tap again to finish, or press Esc to throw the words away. With this on, about 2.5 seconds of quiet also finishes.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Behavior") {

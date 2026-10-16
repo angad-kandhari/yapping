@@ -118,3 +118,41 @@ final class VoiceCommandTests: XCTestCase {
         XCTAssertEqual(AppDelegate.stripSendCommand(from: text), "ship the build")
     }
 }
+
+// MARK: - Spoken punctuation must not touch the speaker's own punctuation
+
+final class TidyTests: XCTestCase {
+    private func roundTrip(_ spoken: String) -> String {
+        let prepared = VoiceCommands.prepare(spoken)
+        return VoiceCommands.rejoin(prepared.segments, prepared)
+    }
+
+    /// The bug: every period not followed by a digit got a space after it,
+    /// so "example.com" was pasted as "example. com" into a terminal.
+    func testDottedTokensSurvive() {
+        XCTAssertEqual(roundTrip("go to example.com now"), "go to example.com now")
+        XCTAssertEqual(roundTrip("e.g. the U.S. team"), "e.g. the U.S. team")
+        XCTAssertEqual(roundTrip("run ls -la ./src"), "run ls -la ./src")
+        XCTAssertEqual(roundTrip("email a@b.co"), "email a@b.co")
+        XCTAssertEqual(roundTrip("wait... what"), "wait... what")
+        XCTAssertEqual(roundTrip("version 3.5 costs $1,000"), "version 3.5 costs $1,000")
+    }
+
+    func testSpokenPunctuationIsStillSpaced() {
+        XCTAssertEqual(roundTrip("hello comma world"), "hello, world")
+        XCTAssertEqual(roundTrip("one period two"), "one. two")
+        XCTAssertEqual(roundTrip("really question mark yes"), "really? yes")
+    }
+
+    func testMixedSpokenAndWrittenPunctuation() {
+        XCTAssertEqual(roundTrip("open example.com comma then ./run period done"),
+                       "open example.com, then ./run. done")
+    }
+
+    func testNoMarkerLeaksIntoOutput() {
+        let out = roundTrip("a comma b new line c period")
+        XCTAssertFalse(out.contains("\u{0002}"))
+        XCTAssertFalse(out.contains("\u{0001}"))
+        XCTAssertEqual(out, "a, b\nc.")
+    }
+}

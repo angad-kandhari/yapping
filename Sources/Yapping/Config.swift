@@ -13,6 +13,28 @@ struct Snippet: Codable, Identifiable, Equatable {
     var expansion: String = ""
 }
 
+/// Pure so the matching rules are tested, not trusted.
+enum TextRules {
+    /// Each pair is (spoken, written). Matches are case-insensitive and must
+    /// stand on their own: bounded by anything that is not a letter or
+    /// digit. A plain substring replace turned "ai" into part of "said".
+    static func apply(to text: String, pairs: [(String, String)]) -> String {
+        var result = text
+        for (spoken, written) in pairs {
+            let phrase = spoken.trimmingCharacters(in: .whitespaces)
+            guard !phrase.isEmpty else { continue }
+            let pattern = "(?i)(?<![\\p{L}\\p{N}])"
+                + NSRegularExpression.escapedPattern(for: phrase)
+                + "(?![\\p{L}\\p{N}])"
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
+            result = regex.stringByReplacingMatches(
+                in: result, range: NSRange(result.startIndex..., in: result),
+                withTemplate: NSRegularExpression.escapedTemplate(for: written))
+        }
+        return result
+    }
+}
+
 /// App-wide settings, persisted to UserDefaults. Observed by SwiftUI views;
 /// read directly (thread-safe enough for our purposes) by the pipeline.
 final class ConfigStore: ObservableObject {
@@ -111,16 +133,10 @@ final class ConfigStore: ObservableObject {
 
     /// Replacement pairs and snippets applied to final text, case-insensitive.
     func applyTextRules(to text: String) -> String {
-        var result = text
-        for rule in replacements where !rule.spoken.isEmpty {
-            result = result.replacingOccurrences(
-                of: rule.spoken, with: rule.written, options: [.caseInsensitive])
-        }
-        for snippet in snippets where !snippet.trigger.isEmpty {
-            result = result.replacingOccurrences(
-                of: snippet.trigger, with: snippet.expansion, options: [.caseInsensitive])
-        }
-        return result
+        TextRules.apply(
+            to: text,
+            pairs: replacements.map { ($0.spoken, $0.written) }
+                + snippets.map { ($0.trigger, $0.expansion) })
     }
 
     // MARK: - Login item (managed LaunchAgent)

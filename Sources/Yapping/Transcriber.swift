@@ -7,36 +7,59 @@ import Speech
 /// Audio streams into the analyzer WHILE the user holds fn, so transcription
 /// is nearly complete the moment they release. No Whisper, no model files to
 /// manage; the OS downloads and owns the speech model.
-final class Transcriber {
-    /// Per-buffer loudness (RMS), feeds the waveform animations.
-    var onLevel: ((Float) -> Void)?
+///
+/// An actor, because every piece of state here used to be touched from
+/// three places at once: the capture task (start/stop), the main thread
+/// (configuration-change notifications swapping the engine) and the audio
+/// tap thread. The tap thread never touches the actor: it talks to a
+/// `CaptureSink` built once per capture, which owns the converter and the
+/// stream continuation and nothing else.
+actor Transcriber {
+    /// Per-buffer loudness (RMS), feeds the waveform animations. Audio thread.
+    private let onLevel: ((Float) -> Void)?
     /// Running transcript (finalized plus the still-refining tail) while the
     /// user talks; feeds the live preview. Arbitrary thread.
-    var onPartial: ((String) -> Void)?
-    /// Fired on the main queue when the input device changes mid-capture
-    /// (AirPods connecting, a USB mic unplugged). The owner should end the
-    /// session gracefully; the words spoken so far are still transcribed.
-    var onDeviceChange: (() -> Void)?
+    private let onPartial: ((String) -> Void)?
+    /// Fired when the input device changed mid-capture and capture could
+    /// NOT be re-armed on the new device. The owner should end the session;
+    /// the words spoken so far are still transcribed.
+    private let onDeviceChange: (() -> Void)?
 
     private var locale: Locale { Locale(identifier: ConfigStore.shared.localeID) }
     private var engine = AVAudioEngine()
     private var engineObserver: NSObjectProtocol?
     private var capturing = false
-    private var needsFreshEngine = false
+    /// True until the first `warm()` or `start()` builds the graph and
+    /// registers the configuration observer; an actor's init cannot do
+    /// that itself (the observer closure needs self).
+    private var needsFreshEngine = true
     private var analyzer: SpeechAnalyzer?
     private var module: SpeechTranscriber?
     private var continuation: AsyncStream<AnalyzerInput>.Continuation?
     private var resultsTask: Task<String, Error>?
-    private var converter: AVAudioConverter?
     private var analyzerFormat: AVAudioFormat?
-    /// Set when the mic is multichannel (raw 3-mic array, USB interfaces):
-    /// buffers are hand-mixed to this mono format before the converter,
-    /// which silently drops multichannel input otherwise.
-    private var tapMonoFormat: AVAudioFormat?
-    private var loggedConvertError = false
+    private var sink: CaptureSink?
+    /// Re-arms this capture has survived; see `configurationChanged`.
+    private var rearms = 0
+    /// Bluetooth headsets can flip profiles twice while settling. Past this
+    /// the device is genuinely unstable and the session ends instead.
+    private static let maxRearms = 3
 
-    init() {
-        armEngine()
+    init(
+        onLevel: ((Float) -> Void)? = nil,
+        onPartial: ((String) -> Void)? = nil,
+        onDeviceChange: (() -> Void)? = nil
+    ) {
+        self.onLevel = onLevel
+        self.onPartial = onPartial
+        self.onDeviceChange = onDeviceChange
+    }
+
+    /// Pre-warm: touching the input node builds the audio graph now so the
+    /// first press does not pay that cost with the user's first word.
+    /// (prepare() on a graphless engine throws; this does not.)
+    func warm() {
+        if needsFreshEngine { rebuildEngine() }
     }
 
     deinit {
@@ -45,36 +68,55 @@ final class Transcriber {
         }
     }
 
-    /// Pre-warm and watch. Touching the input node builds the audio graph
-    /// now so the first press does not pay that cost with the user's first
-    /// word. (prepare() on a graphless engine throws; this does not.)
-    ///
     /// The observer is the AirPods fix: connecting them swaps the default
     /// input device out from under the engine. Left unhandled, the next use
-    /// of the stale graph trips an AVFoundation format assert -- an ObjC
-    /// exception Swift cannot catch -- and kills the whole app.
+    /// of the stale graph trips an AVFoundation format assert, an ObjC
+    /// exception Swift cannot catch, and kills the whole app.
+    private nonisolated static func observe(
+        _ engine: AVAudioEngine, _ body: @escaping @Sendable () -> Void
+    ) -> NSObjectProtocol {
+        NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine, queue: nil
+        ) { _ in body() }
+    }
+
     private func armEngine() {
         _ = engine.inputNode
         if let engineObserver {
             NotificationCenter.default.removeObserver(engineObserver)
         }
-        engineObserver = NotificationCenter.default.addObserver(
-            forName: .AVAudioEngineConfigurationChange,
-            object: engine, queue: .main
-        ) { [weak self] _ in
-            self?.configurationChanged()
+        engineObserver = Self.observe(engine) { [weak self] in
+            Task { await self?.configurationChanged() }
         }
     }
 
     private func configurationChanged() {
-        if capturing {
-            Log.info("audio configuration changed mid-dictation (input device switched)")
-            // Mid-dictation: the engine already halted itself. Let the owner
-            // end the session normally; the next start() rebuilds.
+        guard capturing else {
+            releaseEngine()
+            return
+        }
+        // Mid-dictation. Measured on this machine: on Bluetooth headphones
+        // the change arrives 0.3 to 0.8 s after capture starts, because
+        // opening the input flips the headset into its hands-free profile.
+        // Ending the session here meant every first dictation on AirPods
+        // died with nothing said. Instead, keep the analyzer and its input
+        // stream alive and re-open capture on the device as it is now.
+        rearms += 1
+        guard rearms <= Self.maxRearms else {
+            Log.error("input device changed \(rearms) times in one dictation; giving up on this session")
+            capturing = false
             needsFreshEngine = true
             onDeviceChange?()
-        } else {
-            releaseEngine()
+            return
+        }
+        do {
+            try rearmCapture()
+        } catch {
+            Log.error("could not re-arm capture after a device change: \(error)")
+            capturing = false
+            needsFreshEngine = true
+            onDeviceChange?()
         }
     }
 
@@ -117,8 +159,21 @@ final class Transcriber {
     }
 
     /// One-time (per locale): download the on-device speech model if needed.
+    /// The locale is reserved so the system keeps its assets allocated
+    /// between launches; without the reservation every launch logged a fresh
+    /// "download", which took up to 3.5 s on this machine.
     func ensureModel() async throws {
+        warm()
         let module = makeModule()
+        let locale = self.locale
+        let reserved = await AssetInventory.reservedLocales
+        if !reserved.contains(where: { $0.identifier == locale.identifier }) {
+            do {
+                _ = try await AssetInventory.reserve(locale: locale)
+            } catch {
+                Log.error("could not reserve speech assets for \(locale.identifier): \(error)")
+            }
+        }
         if let request = try await AssetInventory.assetInstallationRequest(supporting: [module]) {
             Log.info("downloading on-device speech model...")
             try await request.downloadAndInstall()
@@ -132,6 +187,7 @@ final class Transcriber {
         let analyzer = SpeechAnalyzer(modules: [module])
         self.module = module
         self.analyzer = analyzer
+        rearms = 0
 
         guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
             throw YappingError.noAudioFormat
@@ -154,21 +210,39 @@ final class Transcriber {
             }
         }
 
-        resultsTask = Task { [weak self] in
+        let onPartial = self.onPartial
+        resultsTask = Task {
             var text = ""
             for try await result in module.results {
                 let chunk = String(result.text.characters)
                 if result.isFinal {
                     text += chunk
-                    self?.onPartial?(text)
+                    onPartial?(text)
                 } else {
-                    self?.onPartial?(text + chunk)
+                    onPartial?(text + chunk)
                 }
             }
             return text
         }
 
         if needsFreshEngine { rebuildEngine() }
+        try openCapture(label: "capture start")
+    }
+
+    /// The input device changed under a live capture: throw the halted graph
+    /// away and open the device as it is now, feeding the same analyzer.
+    private func rearmCapture() throws {
+        engine.inputNode.removeTap(onBus: 0)
+        rebuildEngine()
+        try openCapture(label: "capture re-armed after a device change")
+    }
+
+    /// Resolve the input format, build the converter and sink, install the
+    /// tap and start the engine. Shared by the first start and every re-arm.
+    private func openCapture(label: String) throws {
+        guard let format = analyzerFormat, let continuation else {
+            throw YappingError.inputNotReady
+        }
         var input = engine.inputNode
         applyMicPin(input)
         var inputFormat = input.outputFormat(forBus: 0)
@@ -186,26 +260,17 @@ final class Transcriber {
             Log.error("input device not ready: \(inputFormat.sampleRate) Hz, \(inputFormat.channelCount) ch")
             throw YappingError.inputNotReady
         }
-        Log.info("capture start: input \(inputFormat.sampleRate) Hz, \(inputFormat.channelCount) ch")
-        loggedConvertError = false
-        tapMonoFormat = inputFormat.channelCount > 1
-            ? AVAudioFormat(commonFormat: .pcmFormatFloat32,
-                            sampleRate: inputFormat.sampleRate,
-                            channels: 1, interleaved: false)
-            : nil
-        let converterSource = tapMonoFormat ?? inputFormat
-        converter = AVAudioConverter(from: converterSource, to: format)
-        guard converter != nil else {
-            Log.error("no converter from \(converterSource) to \(format)")
+        guard let sink = CaptureSink(
+            inputFormat: inputFormat, analyzerFormat: format,
+            continuation: continuation, onLevel: onLevel) else {
+            Log.error("no converter from \(inputFormat) to \(format)")
             throw YappingError.inputNotReady
         }
+        self.sink = sink
+        Log.info("\(label): input \(inputFormat.sampleRate) Hz, \(inputFormat.channelCount) ch")
 
-        input.installTap(onBus: 0, bufferSize: 2048, format: inputFormat) { [weak self] buffer, _ in
-            guard let self else { return }
-            self.onLevel?(AudioLevel.rms(of: buffer))
-            if let converted = self.convert(buffer) {
-                self.continuation?.yield(AnalyzerInput(buffer: converted))
-            }
+        input.installTap(onBus: 0, bufferSize: 2048, format: inputFormat) { buffer, _ in
+            sink.handle(buffer)
         }
         engine.prepare()
         try engine.start()
@@ -219,11 +284,7 @@ final class Transcriber {
         continuation = nil
         try await analyzer?.finalizeAndFinishThroughEndOfInput()
         let text = try await resultsTask?.value ?? ""
-        analyzer = nil
-        module = nil
-        resultsTask = nil
-        converter = nil
-        tapMonoFormat = nil
+        clearSession()
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -234,11 +295,14 @@ final class Transcriber {
         continuation = nil
         try? await analyzer?.finalizeAndFinishThroughEndOfInput()
         resultsTask?.cancel()
+        clearSession()
+    }
+
+    private func clearSession() {
         analyzer = nil
         module = nil
         resultsTask = nil
-        converter = nil
-        tapMonoFormat = nil
+        sink = nil
     }
 
     /// Pin capture to the user's chosen device (Settings > Speech), applied
@@ -273,13 +337,51 @@ final class Transcriber {
         // Leave it flagged; start() rebuilds on the next press. Rebuilding
         // here would touch the device while idle, see releaseEngine.
     }
+}
+
+/// Everything the audio tap thread needs, and nothing it must not touch.
+/// Built once per capture (and again on every re-arm, because the input
+/// format may have changed); the actor never reaches into it after that.
+private final class CaptureSink: @unchecked Sendable {
+    private let converter: AVAudioConverter
+    private let analyzerFormat: AVAudioFormat
+    /// Set when the mic is multichannel (raw 3-mic array, USB interfaces):
+    /// buffers are hand-mixed to this mono format before the converter,
+    /// which silently drops multichannel input otherwise.
+    private let monoFormat: AVAudioFormat?
+    private let continuation: AsyncStream<AnalyzerInput>.Continuation
+    private let onLevel: ((Float) -> Void)?
+    /// Only ever read and written on the tap thread.
+    private var loggedConvertError = false
+
+    init?(inputFormat: AVAudioFormat, analyzerFormat: AVAudioFormat,
+          continuation: AsyncStream<AnalyzerInput>.Continuation,
+          onLevel: ((Float) -> Void)?) {
+        monoFormat = inputFormat.channelCount > 1
+            ? AVAudioFormat(commonFormat: .pcmFormatFloat32,
+                            sampleRate: inputFormat.sampleRate,
+                            channels: 1, interleaved: false)
+            : nil
+        guard let converter = AVAudioConverter(
+            from: monoFormat ?? inputFormat, to: analyzerFormat) else { return nil }
+        self.converter = converter
+        self.analyzerFormat = analyzerFormat
+        self.continuation = continuation
+        self.onLevel = onLevel
+    }
+
+    func handle(_ buffer: AVAudioPCMBuffer) {
+        onLevel?(AudioLevel.rms(of: buffer))
+        if let converted = convert(buffer) {
+            continuation.yield(AnalyzerInput(buffer: converted))
+        }
+    }
 
     private func convert(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
-        guard let converter, let format = analyzerFormat,
-              let source = downmixIfNeeded(buffer) else { return nil }
-        let ratio = format.sampleRate / source.format.sampleRate
+        guard let source = downmixIfNeeded(buffer) else { return nil }
+        let ratio = analyzerFormat.sampleRate / source.format.sampleRate
         let capacity = AVAudioFrameCount(Double(source.frameLength) * ratio) + 16
-        guard let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else {
+        guard let out = AVAudioPCMBuffer(pcmFormat: analyzerFormat, frameCapacity: capacity) else {
             return nil
         }
         var served = false
@@ -309,7 +411,7 @@ final class Transcriber {
     /// AVAudioConverter drops multichannel buffers on the floor instead of
     /// downmixing them.
     private func downmixIfNeeded(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
-        guard let monoFormat = tapMonoFormat, buffer.format.channelCount > 1 else {
+        guard let monoFormat, buffer.format.channelCount > 1 else {
             return buffer
         }
         guard let src = buffer.floatChannelData,
@@ -326,12 +428,12 @@ final class Transcriber {
         mono.frameLength = buffer.frameLength
         return mono
     }
-
 }
 
 enum YappingError: Error, LocalizedError {
     case noAudioFormat
     case inputNotReady
+    case timedOut(String)
 
     var errorDescription: String? {
         switch self {
@@ -339,6 +441,57 @@ enum YappingError: Error, LocalizedError {
             return "No compatible audio format for speech analysis."
         case .inputNotReady:
             return "The microphone is switching devices. Try again in a moment."
+        case .timedOut(let step):
+            return "\(step) did not finish in time."
         }
+    }
+}
+
+/// Run `body` with a hard deadline. The body keeps running if it is not
+/// cancellable (a hung CoreAudio call, say); what matters is that the
+/// caller gets control back and can reset its own state. Before this
+/// existed, one stalled stop() left the hotkey dead until relaunch.
+///
+/// Unstructured on purpose: a task group waits for every child before it
+/// returns, so a group-based race only reported the timeout once the
+/// blocked call had finished anyway. Measured: opening the AirPods Max
+/// microphone while they were streaming video blocked for 29 s, and the
+/// "10 s" deadline fired at 29 s.
+func withDeadline<T: Sendable>(
+    seconds: Double, step: String,
+    _ body: @escaping @Sendable () async throws -> T
+) async throws -> T {
+    let settled = DeadlineFlag()
+    return try await withCheckedThrowingContinuation { continuation in
+        let work = Task {
+            do {
+                let value = try await body()
+                if settled.claim() { continuation.resume(returning: value) }
+            } catch {
+                if settled.claim() { continuation.resume(throwing: error) }
+            }
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(seconds))
+            if settled.claim() {
+                work.cancel()
+                continuation.resume(throwing: YappingError.timedOut(step))
+            }
+        }
+    }
+}
+
+/// Whichever side of the race finishes first resumes the continuation;
+/// the other finds the flag already claimed and does nothing.
+private final class DeadlineFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var claimed = false
+
+    func claim() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if claimed { return false }
+        claimed = true
+        return true
     }
 }
