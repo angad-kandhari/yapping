@@ -11,7 +11,7 @@ ifeq ($(IDENTITY),)
 IDENTITY := $(shell security find-identity -v -p codesigning | grep -o '"Apple Development[^"]*"' | head -1)
 endif
 
-.PHONY: build bundle sign notarize install run clean republish
+.PHONY: build bundle sign notarize notarize-dmg install run clean republish
 
 build:
 	swift build -c release --arch arm64
@@ -43,6 +43,16 @@ notarize: sign
 		--keychain-profile yapping --wait
 	xcrun stapler staple $(APP)
 	rm -f .build/Yapping-notarize.zip
+
+# The disk image is its own artifact: a stapled app inside a signed but
+# unnotarized image still gets "could not verify" when the image is opened.
+# Only run when the Developer ID path is in use (an ad-hoc image cannot be
+# notarized), which is the same condition the release target checks.
+notarize-dmg:
+ifneq (,$(findstring Developer ID,$(IDENTITY)))
+	xcrun notarytool submit .build/Yapping.dmg --keychain-profile yapping --wait
+	xcrun stapler staple .build/Yapping.dmg
+endif
 
 install: sign
 	pkill -x yapping || true
@@ -91,6 +101,7 @@ else
 	@echo "no Developer ID identity; releasing without notarization"
 endif
 	bash scripts/make-dmg.sh .build/Yapping.dmg
+	$(MAKE) notarize-dmg
 	ditto -c -k --keepParent $(APP) .build/Yapping-v$(VERSION).zip
 	git tag v$(VERSION)
 	git push origin v$(VERSION)
@@ -105,6 +116,7 @@ endif
 # the assets on the existing draft, and publish it under its tag.
 republish: notarize
 	bash scripts/make-dmg.sh .build/Yapping.dmg
+	$(MAKE) notarize-dmg
 	ditto -c -k --keepParent $(APP) .build/Yapping-v$(VERSION).zip
 	gh release upload v$(VERSION) .build/Yapping.dmg .build/Yapping-v$(VERSION).zip --clobber
 	gh release edit v$(VERSION) --draft=false
